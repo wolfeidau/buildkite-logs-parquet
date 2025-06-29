@@ -1,5 +1,6 @@
 /.claude
 /bklog
+/build/
 /*.parquet
 /*.log
 cmd/bklog/bklog

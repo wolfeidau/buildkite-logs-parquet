@@ -113,7 +113,7 @@ func TestNewBuildkiteAPIClient(t *testing.T) {
 		t.Errorf("Expected base URL %q, got %q", "https://api.buildkite.com/v2", client.baseURL)
 	}
 
-	expectedUserAgent := "buildkite-logs-parquet/v1.2.3 (Go)"
+	expectedUserAgent := fmt.Sprintf("buildkite-logs-parquet/v1.2.3 (Go; %s; %s)", runtime.GOOS, runtime.GOARCH)
 	if client.userAgent != expectedUserAgent {
 		t.Errorf("Expected User-Agent %q, got %q", expectedUserAgent, client.userAgent)
 	}
@@ -143,7 +143,7 @@ func TestUserAgentHeaderSet(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedUserAgent = r.Header.Get("User-Agent")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test log content"))
+		_, _ = w.Write([]byte("test log content"))
 	}))
 	defer server.Close()
 

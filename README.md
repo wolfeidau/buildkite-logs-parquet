@@ -252,22 +252,38 @@ for _, entry := range entries {
 
 ### Installation
 
+**Using Make (recommended):**
 ```bash
-go build -o bklog ./cmd/bklog
+# Build with tests and linting
+make all
+
+# Quick development build
+make dev
+
+# Build with specific version
+make build VERSION=v1.2.3
+
+# Other useful targets
+make clean test lint help
+```
+
+**Manual build:**
+```bash
+go build -o build/bklog ./cmd/bklog
 ```
 
 **Build with version information:**
 ```bash
-go build -ldflags "-X main.version=v1.2.3" -o bklog ./cmd/bklog
+go build -ldflags "-X main.version=v1.2.3" -o build/bklog ./cmd/bklog
 ```
 
 **Check version:**
 ```bash
-./bklog version
+./build/bklog version
 # or
-./bklog -v
+./build/bklog -v
 # or  
-./bklog --version
+./build/bklog --version
 ```
 
 ### Examples
@@ -276,22 +292,22 @@ go build -ldflags "-X main.version=v1.2.3" -o bklog ./cmd/bklog
 
 **Parse a log file with timestamps:**
 ```bash
-./bklog parse -file buildkite.log -strip-ansi
+./build/bklog parse -file buildkite.log -strip-ansi
 ```
 
 **Output only commands:**
 ```bash
-./bklog parse -file buildkite.log -filter command -strip-ansi
+./build/bklog parse -file buildkite.log -filter command -strip-ansi
 ```
 
 **Output only group headers:**
 ```bash
-./bklog parse -file buildkite.log -filter group -strip-ansi
+./build/bklog parse -file buildkite.log -filter group -strip-ansi
 ```
 
 **JSON output:**
 ```bash
-./bklog parse -file buildkite.log -json -strip-ansi
+./build/bklog parse -file buildkite.log -json -strip-ansi
 ```
 
 #### Buildkite API Integration
@@ -299,24 +315,24 @@ go build -ldflags "-X main.version=v1.2.3" -o bklog ./cmd/bklog
 **Fetch logs directly from Buildkite API:**
 ```bash
 export BUILDKITE_API_TOKEN="bkua_your_token_here"
-./bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -strip-ansi
+./build/bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -strip-ansi
 ```
 
 **Export API logs to Parquet:**
 ```bash
 export BUILDKITE_API_TOKEN="bkua_your_token_here"
-./bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -parquet logs.parquet -summary
+./build/bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -parquet logs.parquet -summary
 ```
 
 **Filter and export only commands from API:**
 ```bash
 export BUILDKITE_API_TOKEN="bkua_your_token_here"
-./bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -filter command -json
+./build/bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -filter command -json
 ```
 
 **Show processing statistics:**
 ```bash
-./bklog -file buildkite.log -summary -strip-ansi
+./build/bklog parse -file buildkite.log -summary -strip-ansi
 ```
 Output:
 ```
@@ -332,7 +348,7 @@ Regular output: 179
 
 **Show group/section information:**
 ```bash
-./bklog -file buildkite.log -groups -strip-ansi | head -5
+./build/bklog -file buildkite.log -groups -strip-ansi | head -5
 ```
 Output:
 ```
@@ -345,7 +361,7 @@ Output:
 
 **Export to Parquet format:**
 ```bash
-./bklog -file buildkite.log -parquet output.parquet -summary
+./build/bklog -file buildkite.log -parquet output.parquet -summary
 ```
 Output:
 ```
@@ -362,7 +378,7 @@ Exported 212 entries to output.parquet
 
 **Export filtered data to Parquet:**
 ```bash
-./bklog -file buildkite.log -parquet commands.parquet -filter command -summary
+./build/bklog -file buildkite.log -parquet commands.parquet -filter command -summary
 ```
 This exports only command entries to a smaller Parquet file for analysis.
 
@@ -372,7 +388,7 @@ The CLI provides fast query operations on previously exported Parquet files:
 
 **List all groups with statistics:**
 ```bash
-./bklog query -file output.parquet -op list-groups
+./build/bklog query -file output.parquet -op list-groups
 ```
 Output:
 ```
@@ -393,7 +409,7 @@ Query time: 2.36 ms
 
 **Filter entries by group pattern:**
 ```bash
-./bklog query -file output.parquet -op by-group -group "environment"
+./build/bklog query -file output.parquet -op by-group -group "environment"
 ```
 Output:
 ```
@@ -410,19 +426,19 @@ Query time: 0.36 ms
 
 **JSON output for programmatic use:**
 ```bash
-./bklog query -file output.parquet -op list-groups -format json
+./build/bklog query -file output.parquet -op list-groups -format json
 ```
 
 **Query without statistics:**
 ```bash
-./bklog query -file output.parquet -op list-groups -stats=false
+./build/bklog query -file output.parquet -op list-groups -stats=false
 ```
 
 ### CLI Options
 
 #### Parse Command
 ```bash
-./bklog parse [options]
+./build/bklog parse [options]
 ```
 
 - `-file <path>`: Path to Buildkite log file (required)
@@ -436,7 +452,7 @@ Query time: 0.36 ms
 
 #### Query Command
 ```bash
-./bklog query [options]
+./build/bklog query [options]
 ```
 
 - `-file <path>`: Path to Parquet log file (required)
@@ -519,17 +535,17 @@ The exported Parquet files contain the following columns:
 
 **Basic export:**
 ```bash
-./bklog -file buildkite.log -parquet output.parquet
+./build/bklog -file buildkite.log -parquet output.parquet
 ```
 
 **Export with filtering:**
 ```bash
-./bklog -file buildkite.log -parquet commands.parquet -filter command
+./build/bklog -file buildkite.log -parquet commands.parquet -filter command
 ```
 
 **Export using Go 1.23+ iter.Seq2:**
 ```bash
-./bklog -file buildkite.log -parquet output.parquet -use-seq2 -summary
+./build/bklog -file buildkite.log -parquet output.parquet -use-seq2 -summary
 ```
 This uses the modern `iter.Seq2[int, *LogEntry]` iterator pattern introduced in Go 1.23.
 
