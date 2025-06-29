@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	buildkitelogs "github.com/wolfeidau/buildkite-logs-parquet"
@@ -18,6 +19,11 @@ type Config struct {
 	ShowGroups  bool
 	ParquetFile string
 	UseSeq2     bool
+	// Buildkite API parameters
+	Organization string
+	Pipeline     string
+	Build        string
+	Job          string
 }
 
 type ProcessingSummary struct {
@@ -66,7 +72,7 @@ func handleParseCommand() {
 	var config Config
 
 	parseFlags := flag.NewFlagSet("parse", flag.ExitOnError)
-	parseFlags.StringVar(&config.FilePath, "file", "", "Path to Buildkite log file (required)")
+	parseFlags.StringVar(&config.FilePath, "file", "", "Path to Buildkite log file (use this OR API parameters)")
 	parseFlags.BoolVar(&config.OutputJSON, "json", false, "Output as JSON")
 	parseFlags.BoolVar(&config.StripANSI, "strip-ansi", false, "Strip ANSI escape sequences from output")
 	parseFlags.StringVar(&config.Filter, "filter", "", "Filter entries by type: command, progress, group")
@@ -74,25 +80,58 @@ func handleParseCommand() {
 	parseFlags.BoolVar(&config.ShowGroups, "groups", false, "Show group/section information")
 	parseFlags.StringVar(&config.ParquetFile, "parquet", "", "Export to Parquet file (e.g., output.parquet)")
 	parseFlags.BoolVar(&config.UseSeq2, "use-seq2", false, "Use Go 1.23+ iter.Seq2 for iteration (experimental)")
+	// Buildkite API parameters
+	parseFlags.StringVar(&config.Organization, "org", "", "Buildkite organization slug (for API)")
+	parseFlags.StringVar(&config.Pipeline, "pipeline", "", "Buildkite pipeline slug (for API)")
+	parseFlags.StringVar(&config.Build, "build", "", "Buildkite build number or UUID (for API)")
+	parseFlags.StringVar(&config.Job, "job", "", "Buildkite job ID (for API)")
 
 	parseFlags.Usage = func() {
-		fmt.Printf("Usage: %s parse -file <log-file> [options]\n\n", os.Args[0])
-		fmt.Println("Parse Buildkite log files and export to various formats.")
+		fmt.Printf("Usage: %s parse [options]\n\n", os.Args[0])
+		fmt.Println("Parse Buildkite log files from local files or API and export to various formats.")
+		fmt.Println("\nYou must provide either:")
+		fmt.Println("  -file <path>     Local log file")
+		fmt.Println("  OR API params:   -org -pipeline -build -job")
+		fmt.Println("\nFor API usage, set BUILDKITE_API_TOKEN environment variable.")
 		fmt.Println("\nOptions:")
 		parseFlags.PrintDefaults()
 		fmt.Println("\nExamples:")
+		fmt.Printf("  # Local file:\n")
 		fmt.Printf("  %s parse -file buildkite.log -strip-ansi\n", os.Args[0])
 		fmt.Printf("  %s parse -file buildkite.log -filter command -json\n", os.Args[0])
 		fmt.Printf("  %s parse -file buildkite.log -parquet output.parquet -summary\n", os.Args[0])
+		fmt.Printf("\n  # API:\n")
+		fmt.Printf("  %s parse -org myorg -pipeline mypipe -build 123 -job abc-def -json\n", os.Args[0])
+		fmt.Printf("  %s parse -org myorg -pipeline mypipe -build 123 -job abc-def -parquet logs.parquet\n", os.Args[0])
 	}
 
 	if err := parseFlags.Parse(os.Args[2:]); err != nil {
 		os.Exit(1)
 	}
 
-	if config.FilePath == "" {
+	// Validate that either file or API parameters are provided
+	hasFile := config.FilePath != ""
+	hasAPIParams := config.Organization != "" || config.Pipeline != "" || config.Build != "" || config.Job != ""
+	
+	if !hasFile && !hasAPIParams {
+		fmt.Fprintf(os.Stderr, "Error: Must provide either -file or API parameters (-org, -pipeline, -build, -job)\n\n")
 		parseFlags.Usage()
 		os.Exit(1)
+	}
+	
+	if hasFile && hasAPIParams {
+		fmt.Fprintf(os.Stderr, "Error: Cannot use both -file and API parameters simultaneously\n\n")
+		parseFlags.Usage()
+		os.Exit(1)
+	}
+	
+	// If using API, validate all required parameters are present
+	if hasAPIParams {
+		if err := buildkitelogs.ValidateAPIParams(config.Organization, config.Pipeline, config.Build, config.Job); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
+			parseFlags.Usage()
+			os.Exit(1)
+		}
 	}
 
 	if err := runParse(&config); err != nil {
@@ -143,24 +182,49 @@ func handleQueryCommand() {
 // runQuery is now implemented in query_cli.go using the library package
 
 func runParse(config *Config) error {
-	file, err := os.Open(config.FilePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+	var reader io.ReadCloser
+	var bytesProcessed int64
+	
+	// Determine data source: file or API
+	if config.FilePath != "" {
+		// Local file
+		file, err := os.Open(config.FilePath)
+		if err != nil {
+			return fmt.Errorf("failed to open file: %w", err)
+		}
+		reader = file
+		
+		// Get file size for bytes processed calculation
+		fileInfo, err := file.Stat()
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to get file info: %w", err)
+		}
+		bytesProcessed = fileInfo.Size()
+	} else {
+		// Buildkite API
+		apiToken := os.Getenv("BUILDKITE_API_TOKEN")
+		if apiToken == "" {
+			return fmt.Errorf("BUILDKITE_API_TOKEN environment variable is required for API access")
+		}
+		
+		client := buildkitelogs.NewBuildkiteAPIClient(apiToken)
+		logReader, err := client.GetJobLog(config.Organization, config.Pipeline, config.Build, config.Job)
+		if err != nil {
+			return fmt.Errorf("failed to fetch logs from API: %w", err)
+		}
+		reader = logReader
+		bytesProcessed = -1 // Unknown for API
 	}
+	
 	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
+		if closeErr := reader.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close reader: %v\n", closeErr)
 		}
 	}()
 
-	// Get file size for bytes processed calculation
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to get file info: %w", err)
-	}
-
 	summary := &ProcessingSummary{
-		BytesProcessed: fileInfo.Size(),
+		BytesProcessed: bytesProcessed,
 	}
 
 	parser := buildkitelogs.NewParser()
@@ -168,27 +232,36 @@ func runParse(config *Config) error {
 	// Handle Parquet export if specified
 	if config.ParquetFile != "" {
 		if config.UseSeq2 {
-			err = exportToParquetSeq2(file, parser, config.ParquetFile, config.Filter, summary)
+			err := exportToParquetSeq2(reader, parser, config.ParquetFile, config.Filter, summary)
+			if err != nil {
+				return fmt.Errorf("failed to export to Parquet: %w", err)
+			}
 		} else {
-			err = exportToParquet(file, parser, config.ParquetFile, config.Filter, summary)
-		}
-		if err != nil {
-			return fmt.Errorf("failed to export to Parquet: %w", err)
+			err := exportToParquet(reader, parser, config.ParquetFile, config.Filter, summary)
+			if err != nil {
+				return fmt.Errorf("failed to export to Parquet: %w", err)
+			}
 		}
 	} else {
 		// Regular output processing
 		if config.UseSeq2 {
-			err = outputSeq2(file, parser, config.OutputJSON, config.Filter, config.StripANSI, config.ShowGroups, summary)
-		} else {
-			iterator := parser.NewIterator(file)
-			if config.OutputJSON {
-				err = outputJSONIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
-			} else {
-				err = outputTextIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
+			err := outputSeq2(reader, parser, config.OutputJSON, config.Filter, config.StripANSI, config.ShowGroups, summary)
+			if err != nil {
+				return fmt.Errorf("failed to process data: %w", err)
 			}
-		}
-		if err != nil {
-			return fmt.Errorf("failed to process file: %w", err)
+		} else {
+			iterator := parser.NewIterator(reader)
+			if config.OutputJSON {
+				err := outputJSONIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
+				if err != nil {
+					return fmt.Errorf("failed to process data: %w", err)
+				}
+			} else {
+				err := outputTextIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
+				if err != nil {
+					return fmt.Errorf("failed to process data: %w", err)
+				}
+			}
 		}
 	}
 
@@ -199,19 +272,15 @@ func runParse(config *Config) error {
 	return nil
 }
 
-func outputSeq2(file *os.File, parser *buildkitelogs.Parser, outputJSON bool, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
-	// Reset file position
-	if _, err := file.Seek(0, 0); err != nil {
-		return fmt.Errorf("failed to reset file position: %w", err)
-	}
+func outputSeq2(reader io.Reader, parser *buildkitelogs.Parser, outputJSON bool, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
 
 	if outputJSON {
-		return outputJSONSeq2(file, parser, filter, stripANSI, showGroups, summary)
+		return outputJSONSeq2(reader, parser, filter, stripANSI, showGroups, summary)
 	}
-	return outputTextSeq2(file, parser, filter, stripANSI, showGroups, summary)
+	return outputTextSeq2(reader, parser, filter, stripANSI, showGroups, summary)
 }
 
-func outputJSONSeq2(file *os.File, parser *buildkitelogs.Parser, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
+func outputJSONSeq2(reader io.Reader, parser *buildkitelogs.Parser, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
 	type JSONEntry struct {
 		Timestamp string `json:"timestamp,omitempty"`
 		Content   string `json:"content"`
@@ -221,7 +290,7 @@ func outputJSONSeq2(file *os.File, parser *buildkitelogs.Parser, filter string, 
 
 	var jsonEntries []JSONEntry
 
-	for entry, err := range parser.All(file) {
+	for entry, err := range parser.All(reader) {
 		if err != nil {
 			return fmt.Errorf("parse error: %w", err)
 		}
@@ -274,8 +343,8 @@ func outputJSONSeq2(file *os.File, parser *buildkitelogs.Parser, filter string, 
 	return encoder.Encode(jsonEntries)
 }
 
-func outputTextSeq2(file *os.File, parser *buildkitelogs.Parser, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
-	for entry, err := range parser.All(file) {
+func outputTextSeq2(reader io.Reader, parser *buildkitelogs.Parser, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
+	for entry, err := range parser.All(reader) {
 		if err != nil {
 			return fmt.Errorf("parse error: %w", err)
 		}
@@ -450,8 +519,8 @@ func outputTextIterator(iterator *buildkitelogs.LogIterator, filter string, stri
 	return iterator.Err()
 }
 
-func exportToParquet(file *os.File, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
-	iterator := parser.NewIterator(file)
+func exportToParquet(reader io.Reader, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
+	iterator := parser.NewIterator(reader)
 
 	// Create filter function based on filter string
 	var filterFunc func(*buildkitelogs.LogEntry) bool
@@ -495,7 +564,7 @@ func exportToParquet(file *os.File, parser *buildkitelogs.Parser, filename strin
 	return buildkitelogs.ExportToParquet(entries, filename)
 }
 
-func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
+func exportToParquetSeq2(reader io.Reader, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
 	// Create filter function based on filter string
 	var filterFunc func(*buildkitelogs.LogEntry) bool
 	if filter != "" {
@@ -506,15 +575,8 @@ func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename s
 
 	// Create a sequence that counts entries for summary and handles errors
 	countingSeq := func(yield func(*buildkitelogs.LogEntry, error) bool) {
-		// Reset file position to beginning
-		if _, err := file.Seek(0, 0); err != nil {
-			// Yield the error to the caller
-			yield(nil, fmt.Errorf("failed to reset file position: %w", err))
-			return
-		}
-
 		lineNum := 0
-		for entry, err := range parser.All(file) {
+		for entry, err := range parser.All(reader) {
 			lineNum++
 
 			// Handle parse errors - still count them but log warnings
@@ -560,7 +622,11 @@ func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename s
 
 func printSummary(summary *ProcessingSummary) {
 	fmt.Printf("\n--- Processing Summary ---\n")
-	fmt.Printf("Bytes processed: %.1f KB\n", float64(summary.BytesProcessed)/1024)
+	if summary.BytesProcessed >= 0 {
+		fmt.Printf("Bytes processed: %.1f KB\n", float64(summary.BytesProcessed)/1024)
+	} else {
+		fmt.Printf("Bytes processed: (API source - unknown)\n")
+	}
 	fmt.Printf("Total entries: %d\n", summary.TotalEntries)
 	fmt.Printf("Entries with timestamps: %d\n", summary.EntriesWithTime)
 	fmt.Printf("Commands: %d\n", summary.Commands)

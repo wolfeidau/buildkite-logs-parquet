@@ -20,6 +20,8 @@ This parser extracts the timestamps and content, providing both a Go library API
   - Commands (lines starting with `$`)
   - Section headers (lines starting with `~~~`, `---`, or `+++`)
   - Progress updates (git operation progress)
+- **Multiple Data Sources**: Local files and Buildkite API integration
+- **Buildkite API**: Fetch logs directly from Buildkite jobs via REST API
 - **Multiple Output Formats**: Text, JSON, and Parquet export
 - **Filtering**: Filter logs by entry type (command, group, progress)
 - **Stream Processing**: Parse from any `io.Reader`
@@ -256,24 +258,46 @@ go build -o bklog ./cmd/bklog
 
 ### Examples
 
+#### Local File Processing
+
 **Parse a log file with timestamps:**
 ```bash
-./bklog -file buildkite.log -strip-ansi
+./bklog parse -file buildkite.log -strip-ansi
 ```
 
 **Output only commands:**
 ```bash
-./bklog -file buildkite.log -filter command -strip-ansi
+./bklog parse -file buildkite.log -filter command -strip-ansi
 ```
 
 **Output only group headers:**
 ```bash
-./bklog -file buildkite.log -filter group -strip-ansi
+./bklog parse -file buildkite.log -filter group -strip-ansi
 ```
 
 **JSON output:**
 ```bash
-./bklog -file buildkite.log -json -strip-ansi
+./bklog parse -file buildkite.log -json -strip-ansi
+```
+
+#### Buildkite API Integration
+
+**Fetch logs directly from Buildkite API:**
+```bash
+export BUILDKITE_API_TOKEN="bkua_your_token_here"
+./bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -strip-ansi
+```
+
+**Export API logs to Parquet:**
+```bash
+export BUILDKITE_API_TOKEN="bkua_your_token_here"
+./bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -parquet logs.parquet -summary
+```
+
+**Filter and export only commands from API:**
+```bash
+export BUILDKITE_API_TOKEN="bkua_your_token_here"
+./bklog parse -org myorg -pipeline mypipeline -build 123 -job abc-def-456 -filter command -json
 ```
 
 **Show processing statistics:**
