@@ -1,0 +1,212 @@
+_bk;t=1745322209921~~~ Running global environment hook
+_bk;t=1745322209921[90m$[0m /buildkite/agent/hooks/environment
+_bk;t=1745322209948~~~ Running global pre-checkout hook
+_bk;t=1745322209949[90m$[0m /buildkite/agent/hooks/pre-checkout
+_bk;t=1745322209975~~~ Preparing working directory
+_bk;t=1745322209975[90m# Creating "/buildkite/builds/g01mvtp4g0vi2-1/test/bash-example"[0m
+_bk;t=1745322209975[90m$[0m cd /buildkite/builds/g01mvtp4g0vi2-1/test/bash-example
+_bk;t=1745322209975[90m$[0m git clone -v -- https://github.com/buildkite/bash-example.git .
+_bk;t=1745322209976Cloning into '.'...
+_bk;t=1745322210134POST git-upload-pack (175 bytes)
+_bk;t=1745322210171POST git-upload-pack (802 bytes)
+_bk;t=1745322210213remote: Enumerating objects: 263, done.[K_bk;t=1745322210213
+_bk;t=1745322210213remote: Counting objects:   1% (1/54)[K_bk;t=1745322210213remote: Counting objects:   3% (2/54)[K_bk;t=1745322210213remote: Counting objects:   5% (3/54)[K_bk;t=1745322210213remote: Counting objects:   7% (4/54)[K_bk;t=1745322210213remote: Counting objects:   9% (5/54)[K_bk;t=1745322210213remote: Counting objects:  11% (6/54)[K_bk;t=1745322210213remote: Counting objects:  12% (7/54)[K_bk;t=1745322210213remote: Counting objects:  14% (8/54)[K_bk;t=1745322210213remote: Counting objects:  16% (9/54)[K_bk;t=1745322210213remote: Counting objects:  18% (10/54)[K_bk;t=1745322210213remote: Counting objects:  20% (11/54)[K_bk;t=1745322210213remote: Counting objects:  22% (12/54)[K_bk;t=1745322210213remote: Counting objects:  24% (13/54)[K_bk;t=1745322210213remote: Counting objects:  25% (14/54)[K_bk;t=1745322210213remote: Counting objects:  27% (15/54)[K_bk;t=1745322210213remote: Counting objects:  29% (16/54)[K_bk;t=1745322210213remote: Counting objects:  31% (17/54)[K_bk;t=1745322210213remote: Counting objects:  33% (18/54)[K_bk;t=1745322210213remote: Counting objects:  35% (19/54)[K_bk;t=1745322210213remote: Counting objects:  37% (20/54)[K_bk;t=1745322210213remote: Counting objects:  38% (21/54)[K_bk;t=1745322210213remote: Counting objects:  40% (22/54)[K_bk;t=1745322210213remote: Counting objects:  42% (23/54)[K_bk;t=1745322210213remote: Counting objects:  44% (24/54)[K_bk;t=1745322210213remote: Counting objects:  46% (25/54)[K_bk;t=1745322210213remote: Counting objects:  48% (26/54)[K_bk;t=1745322210213remote: Counting objects:  50% (27/54)[K_bk;t=1745322210213remote: Counting objects:  51% (28/54)[K_bk;t=1745322210213remote: Counting objects:  53% (29/54)[K_bk;t=1745322210213remote: Counting objects:  55% (30/54)[K_bk;t=1745322210213remote: Counting objects:  57% (31/54)[K_bk;t=1745322210213remote: Counting objects:  59% (32/54)[K_bk;t=1745322210213remote: Counting objects:  61% (33/54)[K_bk;t=1745322210213remote: Counting objects:  62% (34/54)[K_bk;t=1745322210213remote: Counting objects:  64% (35/54)[K_bk;t=1745322210213remote: Counting objects:  66% (36/54)[K_bk;t=1745322210213remote: Counting objects:  68% (37/54)[K_bk;t=1745322210213remote: Counting objects:  70% (38/54)[K_bk;t=1745322210213remote: Counting objects:  72% (39/54)[K_bk;t=1745322210213remote: Counting objects:  74% (40/54)[K_bk;t=1745322210213remote: Counting objects:  75% (41/54)[K_bk;t=1745322210213remote: Counting objects:  77% (42/54)[K_bk;t=1745322210213remote: Counting objects:  79% (43/54)[K_bk;t=1745322210213remote: Counting objects:  81% (44/54)[K_bk;t=1745322210213remote: Counting objects:  83% (45/54)[K_bk;t=1745322210213remote: Counting objects:  85% (46/54)[K_bk;t=1745322210213remote: Counting objects:  87% (47/54)[K_bk;t=1745322210213remote: Counting objects:  88% (48/54)[K_bk;t=1745322210213remote: Counting objects:  90% (49/54)[K_bk;t=1745322210213remote: Counting objects:  92% (50/54)[K_bk;t=1745322210213remote: Counting objects:  94% (51/54)[K_bk;t=1745322210213remote: Counting objects:  96% (52/54)[K_bk;t=1745322210213remote: Counting objects:  98% (53/54)[K_bk;t=1745322210213remote: Counting objects: 100% (54/54)[K_bk;t=1745322210213remote: Counting objects: 100% (54/54), done.[K_bk;t=1745322210213
+_bk;t=1745322210213remote: Compressing objects:   5% (1/17)[K_bk;t=1745322210213remote: Compressing objects:  11% (2/17)[K_bk;t=1745322210213remote: Compressing objects:  17% (3/17)[K_bk;t=1745322210213remote: Compressing objects:  23% (4/17)[K_bk;t=1745322210213remote: Compressing objects:  29% (5/17)[K_bk;t=1745322210213remote: Compressing objects:  35% (6/17)[K_bk;t=1745322210213remote: Compressing objects:  41% (7/17)[K_bk;t=1745322210213remote: Compressing objects:  47% (8/17)[K_bk;t=1745322210213remote: Compressing objects:  52% (9/17)[K_bk;t=1745322210213remote: Compressing objects:  58% (10/17)[K_bk;t=1745322210213remote: Compressing objects:  64% (11/17)[K_bk;t=1745322210213remote: Compressing objects:  70% (12/17)[K_bk;t=1745322210213remote: Compressing objects:  76% (13/17)[K_bk;t=1745322210213remote: Compressing objects:  82% (14/17)[K_bk;t=1745322210213remote: Compressing objects:  88% (15/17)[K_bk;t=1745322210213remote: Compressing objects:  94% (16/17)[K_bk;t=1745322210213remote: Compressing objects: 100% (17/17)[K_bk;t=1745322210213remote: Compressing objects: 100% (17/17), done.[K_bk;t=1745322210213
+_bk;t=1745322210236Receiving objects:   0% (1/263)Receiving objects:   1% (3/263)Receiving objects:   2% (6/263)Receiving objects:   3% (8/263)Receiving objects:   4% (11/263)Receiving objects:   5% (14/263)Receiving objects:   6% (16/263)Receiving objects:   7% (19/263)Receiving objects:   8% (22/263)Receiving objects:   9% (24/263)Receiving objects:  10% (27/263)Receiving objects:  11% (29/263)Receiving objects:  12% (32/263)Receiving objects:  13% (35/263)Receiving objects:  14% (37/263)Receiving objects:  15% (40/263)Receiving objects:  16% (43/263)Receiving objects:  17% (45/263)Receiving objects:  18% (48/263)Receiving objects:  19% (50/263)Receiving objects:  20% (53/263)Receiving objects:  21% (56/263)Receiving objects:  22% (58/263)Receiving objects:  23% (61/263)Receiving objects:  24% (64/263)Receiving objects:  25% (66/263)Receiving objects:  26% (69/263)Receiving objects:  27% (72/263)Receiving objects:  28% (74/263)Receiving objects:  29% (77/263)remote: Total 263 (delta 45), reused 37 (delta 37), pack-reused 209 (from 1)[K_bk;t=1745322210340
+_bk;t=1745322210340Receiving objects:  30% (79/263)Receiving objects:  31% (82/263)Receiving objects:  32% (85/263)Receiving objects:  33% (87/263)Receiving objects:  34% (90/263)Receiving objects:  35% (93/263)Receiving objects:  36% (95/263)Receiving objects:  37% (98/263)Receiving objects:  38% (100/263)Receiving objects:  39% (103/263)Receiving objects:  40% (106/263)Receiving objects:  41% (108/263)Receiving objects:  42% (111/263)Receiving objects:  43% (114/263)Receiving objects:  44% (116/263)Receiving objects:  45% (119/263)Receiving objects:  46% (121/263)Receiving objects:  47% (124/263)Receiving objects:  48% (127/263)Receiving objects:  49% (129/263)Receiving objects:  50% (132/263)Receiving objects:  51% (135/263)Receiving objects:  52% (137/263)Receiving objects:  53% (140/263)Receiving objects:  54% (143/263)Receiving objects:  55% (145/263)Receiving objects:  56% (148/263)Receiving objects:  57% (150/263)Receiving objects:  58% (153/263)Receiving objects:  59% (156/263)Receiving objects:  60% (158/263)Receiving objects:  61% (161/263)Receiving objects:  62% (164/263)Receiving objects:  63% (166/263)Receiving objects:  64% (169/263)Receiving objects:  65% (171/263)Receiving objects:  66% (174/263)Receiving objects:  67% (177/263)Receiving objects:  68% (179/263)Receiving objects:  69% (182/263)Receiving objects:  70% (185/263)Receiving objects:  71% (187/263)Receiving objects:  72% (190/263)Receiving objects:  73% (192/263)Receiving objects:  74% (195/263)Receiving objects:  75% (198/263)Receiving objects:  76% (200/263)Receiving objects:  77% (203/263)Receiving objects:  78% (206/263)Receiving objects:  79% (208/263)Receiving objects:  80% (211/263)Receiving objects:  81% (214/263)Receiving objects:  82% (216/263)Receiving objects:  83% (219/263)Receiving objects:  84% (221/263)Receiving objects:  85% (224/263)Receiving objects:  86% (227/263)Receiving objects:  87% (229/263)Receiving objects:  88% (232/263)Receiving objects:  89% (235/263)Receiving objects:  90% (237/263)Receiving objects:  91% (240/263)Receiving objects:  92% (242/263)Receiving objects:  93% (245/263)Receiving objects:  94% (248/263)Receiving objects:  95% (250/263)Receiving objects:  96% (253/263)Receiving objects:  97% (256/263)Receiving objects:  98% (258/263)Receiving objects:  99% (261/263)Receiving objects: 100% (263/263)Receiving objects: 100% (263/263), 607.65 KiB | 5.73 MiB/s, done.
+_bk;t=1745322210340Resolving deltas:   0% (0/119)Resolving deltas:   1% (2/119)Resolving deltas:   2% (3/119)Resolving deltas:   3% (4/119)Resolving deltas:   4% (5/119)Resolving deltas:   5% (6/119)Resolving deltas:   6% (8/119)Resolving deltas:   7% (9/119)Resolving deltas:   8% (10/119)Resolving deltas:   9% (11/119)Resolving deltas:  10% (12/119)Resolving deltas:  11% (14/119)Resolving deltas:  12% (15/119)Resolving deltas:  13% (16/119)Resolving deltas:  14% (17/119)Resolving deltas:  15% (18/119)Resolving deltas:  16% (20/119)Resolving deltas:  17% (21/119)Resolving deltas:  18% (22/119)Resolving deltas:  19% (23/119)Resolving deltas:  20% (24/119)Resolving deltas:  21% (25/119)Resolving deltas:  22% (27/119)Resolving deltas:  23% (28/119)Resolving deltas:  24% (29/119)Resolving deltas:  25% (30/119)Resolving deltas:  26% (31/119)Resolving deltas:  27% (33/119)Resolving deltas:  28% (34/119)Resolving deltas:  29% (35/119)Resolving deltas:  30% (36/119)Resolving deltas:  31% (37/119)Resolving deltas:  32% (39/119)Resolving deltas:  33% (40/119)Resolving deltas:  34% (41/119)Resolving deltas:  35% (42/119)Resolving deltas:  36% (43/119)Resolving deltas:  37% (45/119)Resolving deltas:  38% (46/119)Resolving deltas:  39% (47/119)Resolving deltas:  40% (48/119)Resolving deltas:  41% (49/119)Resolving deltas:  42% (50/119)Resolving deltas:  43% (52/119)Resolving deltas:  44% (53/119)Resolving deltas:  45% (54/119)Resolving deltas:  46% (55/119)Resolving deltas:  47% (56/119)Resolving deltas:  48% (58/119)Resolving deltas:  49% (59/119)Resolving deltas:  50% (60/119)Resolving deltas:  51% (61/119)Resolving deltas:  52% (62/119)Resolving deltas:  53% (64/119)Resolving deltas:  54% (65/119)Resolving deltas:  55% (66/119)Resolving deltas:  56% (67/119)Resolving deltas:  57% (68/119)Resolving deltas:  58% (70/119)Resolving deltas:  59% (71/119)Resolving deltas:  60% (72/119)Resolving deltas:  61% (73/119)Resolving deltas:  62% (74/119)Resolving deltas:  63% (75/119)Resolving deltas:  64% (77/119)Resolving deltas:  65% (78/119)Resolving deltas:  66% (79/119)Resolving deltas:  67% (80/119)Resolving deltas:  68% (81/119)Resolving deltas:  69% (83/119)Resolving deltas:  70% (84/119)Resolving deltas:  71% (85/119)Resolving deltas:  72% (86/119)Resolving deltas:  73% (87/119)Resolving deltas:  74% (89/119)Resolving deltas:  75% (90/119)Resolving deltas:  76% (91/119)Resolving deltas:  77% (92/119)Resolving deltas:  78% (93/119)Resolving deltas:  79% (95/119)Resolving deltas:  80% (96/119)Resolving deltas:  81% (97/119)Resolving deltas:  82% (98/119)Resolving deltas:  83% (99/119)Resolving deltas:  84% (100/119)Resolving deltas:  85% (102/119)Resolving deltas:  86% (103/119)Resolving deltas:  87% (104/119)Resolving deltas:  88% (105/119)Resolving deltas:  89% (106/119)Resolving deltas:  90% (108/119)Resolving deltas:  91% (109/119)Resolving deltas:  92% (110/119)Resolving deltas:  93% (111/119)Resolving deltas:  94% (112/119)Resolving deltas:  95% (114/119)Resolving deltas:  96% (115/119)Resolving deltas:  97% (116/119)Resolving deltas:  98% (117/119)Resolving deltas:  99% (118/119)Resolving deltas: 100% (119/119)Resolving deltas: 100% (119/119), done.
+_bk;t=1745322210349[90m$[0m git clean -ffxdq
+_bk;t=1745322210351[90m$[0m git fetch -v --prune -- origin 5cf26b27727eb6a0ebdc139cf6d39907372cf565
+_bk;t=1745322210462POST git-upload-pack (102 bytes)
+_bk;t=1745322210526From https://github.com/buildkite/bash-example
+_bk;t=1745322210526 * branch            5cf26b27727eb6a0ebdc139cf6d39907372cf565 -> FETCH_HEAD
+_bk;t=1745322210530[90m$[0m git checkout -f 5cf26b27727eb6a0ebdc139cf6d39907372cf565
+_bk;t=1745322210533HEAD is now at 5cf26b2 Merge pull request #26 from MelissaKaulfuss/patch-1
+_bk;t=1745322210533[90m# Cleaning again to catch any post-checkout changes[0m
+_bk;t=1745322210533[90m$[0m git clean -ffxdq
+_bk;t=1745322210535[90m# Checking to see if git commit information needs to be sent to Buildkite...[0m
+_bk;t=1745322210535[90m$[0m buildkite-agent meta-data exists buildkite:git:commit
+_bk;t=1745322210644[90m# Git commit information has already been sent to Buildkite[0m
+_bk;t=1745322210644~~~ Running global pre-command hook
+_bk;t=1745322210644[90m$[0m /buildkite/agent/hooks/pre-command
+_bk;t=1745322210658No cache paths specified. Skipping cache mounting.
+_bk;t=1745322210669~~~ Running local pre-command hook
+_bk;t=1745322210669[90m$[0m .buildkite/hooks/pre-command
+_bk;t=1745322210680This is an example of a pre-command hook from .buildkite/hooks/pre-command
+_bk;t=1745322210692~~~ Running script
+_bk;t=1745322210692[90m$[0m ./script.sh
+_bk;t=1745322210694--- :package: Build job checkout directory
+_bk;t=1745322210694/buildkite/builds/g01mvtp4g0vi2-1/test/bash-example
+_bk;t=1745322210698total 36
+_bk;t=1745322210698drwxr-xr-x 5 root root 4096 Apr 22 11:43 .
+_bk;t=1745322210698drwxr-xr-x 3 root root 4096 Apr 22 11:43 ..
+_bk;t=1745322210698drwxr-xr-x 3 root root 4096 Apr 22 11:43 .buildkite
+_bk;t=1745322210698drwxr-xr-x 8 root root 4096 Apr 22 11:43 .git
+_bk;t=1745322210698-rw-r--r-- 1 root root 1084 Apr 22 11:43 License.md
+_bk;t=1745322210698-rw-r--r-- 1 root root  633 Apr 22 11:43 Readme.md
+_bk;t=1745322210698drwxr-xr-x 2 root root 4096 Apr 22 11:43 artifacts
+_bk;t=1745322210698-rw-r--r-- 1 root root  163 Apr 22 11:43 renovate.json
+_bk;t=1745322210698-rwxr-xr-x 1 root root  652 Apr 22 11:43 script.sh
+_bk;t=1745322210698--- :evergreen_tree: Build job environment
+_bk;t=1745322210699BUILDKITE_GIT_MIRRORS_LOCK_TIMEOUT=300
+_bk;t=1745322210699BUILDKITE_AGENT_META_DATA_QUEUE=hosted
+_bk;t=1745322210699BUILDKITE_TAG=
+_bk;t=1745322210699BUILDKITE_GIT_CHECKOUT_FLAGS=-f
+_bk;t=1745322210699BUILDKITE_BUILD_ID=01965d4f-2fb3-4b74-8cf1-b0b10999fce5
+_bk;t=1745322210699BUILDKITE_REBUILT_FROM_BUILD_ID=
+_bk;t=1745322210699AGENT_BASE_DIR_PATH=/buildkite/agent
+_bk;t=1745322210699NSC_METADATA_FILE=/var/run/nsc/metadata.json
+_bk;t=1745322210699DOCKER_DEFAULT_PLATFORM=linux/amd64
+_bk;t=1745322210699BUILDKITE_REPO=https://github.com/buildkite/bash-example.git
+_bk;t=1745322210699BUILDKITE_GIT_FETCH_FLAGS=-v --prune
+_bk;t=1745322210699BUILDKITE_BUILD_NUMBER=1
+_bk;t=1745322210699BUILDKITE_PULL_REQUEST_LABELS=
+_bk;t=1745322210699BUILDKITE_SHELL=/bin/bash -e -c
+_bk;t=1745322210699HOSTNAME=g01mvtp4g0vi2
+_bk;t=1745322210699BUILDKITE_PIPELINE_NAME=Bash Example
+_bk;t=1745322210699BUILDKITE_STRICT_SINGLE_HOOKS=false
+_bk;t=1745322210699BUILDKITE=true
+_bk;t=1745322210699BUILDKITE_LAST_HOOK_EXIT_STATUS=0
+_bk;t=1745322210699BUILDKITE_STEP_KEY=
+_bk;t=1745322210699BUILDKITE_GIT_SUBMODULES=true
+_bk;t=1745322210699BUILDKITE_GIT_MIRRORS_PATH=
+_bk;t=1745322210699BUILDKITE_COMMIT_RESOLVED=true
+_bk;t=1745322210699BUILDKITE_SCRIPT_PATH=script.sh
+_bk;t=1745322210699BUILDKITE_CANCEL_GRACE_PERIOD=20
+_bk;t=1745322210699BUILDKITE_PULL_REQUEST_BASE_BRANCH=
+_bk;t=1745322210699BUILDKITE_AGENT_DISABLE_WARNINGS_FOR=
+_bk;t=1745322210699BUILDKITE_AGENT_JOB_API_SOCKET=/root/.buildkite-agent/sockets/job-api/44-45061.sock
+_bk;t=1745322210699PWD=/buildkite/builds/g01mvtp4g0vi2-1/test/bash-example
+_bk;t=1745322210699BUILDKITE_ENV_FILE=/tmp/job-env-01965d4f-42ae-4c81-95e7-bdfd929bee1e3572828631
+_bk;t=1745322210699BUILDKITE_BIN_PATH=/buildkite/agent/bin
+_bk;t=1745322210699BUILDKITE_PLUGINS_PATH=/buildkite/plugins
+_bk;t=1745322210699NSC_BUILDKIT_PROXY_STATEDIR=/var/run/nsc-buildkit
+_bk;t=1745322210699BUILDKITE_ARTIFACT_PATHS=artifacts/*
+_bk;t=1745322210699BUILDKITE_CONFIG_PATH=
+_bk;t=1745322210699BUILDKITE_GIT_CLONE_FLAGS=-v
+_bk;t=1745322210699BUILDKITE_TRACE_CONTEXT_ENCODING=gob
+_bk;t=1745322210699BUILDKITE_GIT_CLEAN_FLAGS=-ffxdq
+_bk;t=1745322210699BUILDKITE_AGENT_NAME=g01mvtp4g0vi2-1
+_bk;t=1745322210699BUILDKITE_COMMAND_EVAL=true
+_bk;t=1745322210699BUILDKITE_LABEL=:hammer: Example Script
+_bk;t=1745322210699BUILDKITE_BUILD_CHECKOUT_PATH=/buildkite/builds/g01mvtp4g0vi2-1/test/bash-example
+_bk;t=1745322210699BUILDKITE_BUILD_CREATOR=Chris Atkins
+_bk;t=1745322210699HOME=/root
+_bk;t=1745322210699BUILDKITE_AGENT_ENDPOINT=https://agent.buildkite.com/v3
+_bk;t=1745322210699BUILDKITE_SOCKETS_PATH=/root/.buildkite-agent/sockets
+_bk;t=1745322210699BUILDKITE_AGENT_PID=25
+_bk;t=1745322210699BUILDKITE_PIPELINE_PROVIDER=github
+_bk;t=1745322210699BUILDKITE_REBUILT_FROM_BUILD_NUMBER=
+_bk;t=1745322210699BUILDKITE_COMPUTE_TYPE=hosted
+_bk;t=1745322210699BUILDKITE_COMMAND=script.sh
+_bk;t=1745322210699BUILDKITE_PULL_REQUEST_REPO=
+_bk;t=1745322210699BUILDKITE_HOOKS_PATH=/buildkite/agent/hooks
+_bk;t=1745322210699BUILDKITE_TRIGGERED_FROM_BUILD_PIPELINE_SLUG=
+_bk;t=1745322210699BUILDKITE_BUILD_AUTHOR=
+_bk;t=1745322210699BUILDKITE_PULL_REQUEST=false
+_bk;t=1745322210699NSC_DOCKER_BUILDX_SETUP_CMD=nsc docker buildx setup --use --background --background_debug_dir ${NSC_BUILDKIT_PROXY_STATEDIR:-/tmp/nsc} --use_server_side_proxy
+_bk;t=1745322210699BUILDKITE_ENV_JSON_FILE=/tmp/job-env-json-01965d4f-42ae-4c81-95e7-bdfd929bee1e981515134
+_bk;t=1745322210699NSC_TOKEN_FILE=/var/run/nsc/token.json
+_bk;t=1745322210699BUILDKITE_JOB_ID=01965d4f-42ae-4c81-95e7-bdfd929bee1e
+_bk;t=1745322210699BUILDKITE_BUILD_AUTHOR_EMAIL=
+_bk;t=1745322210699TERM=xterm-256color
+_bk;t=1745322210699BUILDKITE_AGENT_ID=01965d4f-706c-436f-99d0-4b451b444257
+_bk;t=1745322210699BUILDKITE_ORGANIZATION_SLUG=test
+_bk;t=1745322210699BUILDKITE_PLUGINS_ENABLED=true
+_bk;t=1745322210699BUILDKITE_USE_GITHUB_APP_GIT_CREDENTIALS=true
+_bk;t=1745322210699BUILDKITE_STEP_ID=01965d4f-427e-4776-8f00-9df81d906e00
+_bk;t=1745322210699BUILDKITE_GIT_MIRRORS_SKIP_UPDATE=false
+_bk;t=1745322210699BUILDKITE_AGENT_DEBUG=false
+_bk;t=1745322210699BUILDKITE_BRANCH=main
+_bk;t=1745322210699NSC_DOCKER_CONFIG=/tmp/nsc/.docker/config.json
+_bk;t=1745322210699BUILDKITE_PIPELINE_DEFAULT_BRANCH=main
+_bk;t=1745322210699BUILDKITE_PROJECT_PROVIDER=github
+_bk;t=1745322210699SHLVL=1
+_bk;t=1745322210699BUILDKITE_ADDITIONAL_HOOKS_PATHS=
+_bk;t=1745322210699BUILDKITE_BUILD_CREATOR_EMAIL=chris.a@buildkite.com
+_bk;t=1745322210699BUILDKITE_BUILD_PATH=/buildkite/builds
+_bk;t=1745322210699BUILDKITE_CLUSTER_NAME=Cluster with hosted stuff :cat:
+_bk;t=1745322210699BUILDKITE_SOURCE=ui
+_bk;t=1745322210699BUILDKITE_AGENT_EXPERIMENT=
+_bk;t=1745322210699BUILDKITE_LOCAL_HOOKS_ENABLED=true
+_bk;t=1745322210699BUILDKITE_AGENT_JOB_API_TOKEN=[REDACTED]
+_bk;t=1745322210699BUILDKITE_SSH_KEYSCAN=true
+_bk;t=1745322210699BUILDKITE_ORGANIZATION_ID=xxxxxxxx-c989-4e99-8e5b-18706c4665e1
+_bk;t=1745322210699BUILDKITE_SIGNAL_GRACE_PERIOD_SECONDS=19
+_bk;t=1745322210699NS_DO_NOT_UPDATE=1
+_bk;t=1745322210699NSC_PATH=/nsc/bin:/buildkite/agent/bin:/vendor/docker
+_bk;t=1745322210699BUILDKITE_PIPELINE_ID=xxxxxxxx-1b52-4da2-93ed-b99b3e57b10b
+_bk;t=1745322210699BUILDKITE_TIMEOUT=false
+_bk;t=1745322210699BUILDKITE_AGENT_DEBUG_HTTP=false
+_bk;t=1745322210699BUILDKITE_PIPELINE_SLUG=bash-example
+_bk;t=1745322210699BUILDKITE_AGENT_ACCESS_TOKEN=[REDACTED]
+_bk;t=1745322210699BUILDKITE_BUILD_URL=https://buildkite.com/test/bash-example/builds/1
+_bk;t=1745322210699BUILDKITE_MESSAGE=Merge pull request #26 from MelissaKaulfuss/patch-1
+_bk;t=1745322210699
+_bk;t=1745322210699Update pipeline.yml
+_bk;t=1745322210699BUILDKITE_TRIGGERED_FROM_BUILD_NUMBER=
+_bk;t=1745322210699PATH=/nsc/bin:/buildkite/agent/bin:/vendor/docker:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/buildkite/agent/bin:/buildkite/agent/bin
+_bk;t=1745322210699BUILDKITE_PIPELINE_TEAMS=everyone
+_bk;t=1745322210699CI=true
+_bk;t=1745322210699BUILDKITE_GIT_CLONE_MIRROR_FLAGS=-v
+_bk;t=1745322210699BUILDKITE_NO_HTTP2=false
+_bk;t=1745322210699BUILDKITE_PLUGIN_VALIDATION=false
+_bk;t=1745322210699BUILDKITE_JOB_LOG_TMPFILE=/tmp/buildkite_job_log905655597
+_bk;t=1745322210699BUILDKITE_RETRY_COUNT=0
+_bk;t=1745322210699BUILDKITE_PROJECT_SLUG=test/bash-example
+_bk;t=1745322210699BUILDKITE_REDACTED_VARS=*_PASSWORD,*_SECRET,*_TOKEN,*_PRIVATE_KEY,*_ACCESS_KEY,*_SECRET_KEY,*_CONNECTION_STRING
+_bk;t=1745322210699GIT_TERMINAL_PROMPT=0
+_bk;t=1745322210699BUILDKITE_COMMIT=5cf26b27727eb6a0ebdc139cf6d39907372cf565
+_bk;t=1745322210699BUILDKITE_TRIGGERED_FROM_BUILD_ID=
+_bk;t=1745322210699BUILDKITE_BUILD_CREATOR_TEAMS=everyone
+_bk;t=1745322210699BUILDKITE_CLUSTER_ID=xxxxxxxx-5dd0-4851-9c59-fc72b46bb811
+_bk;t=1745322210699NSC_ENDPOINT=https://api.ord2.nscluster.cloud
+_bk;t=1745322210699_=/usr/bin/env
+_bk;t=1745322210699+++ :hammer: Example tests
+_bk;t=1745322210701[33mCongratulations![0m You've successfully run your first build on Buildkite! 👍
+_bk;t=1745322210701
+_bk;t=1745322210701[33m        $$$$
+_bk;t=1745322210701       $$__$
+_bk;t=1745322210701       $___$$
+_bk;t=1745322210701       $___$$
+_bk;t=1745322210701       $$___$$
+_bk;t=1745322210701        $____$$
+_bk;t=1745322210701        $$____$$$
+_bk;t=1745322210701         $$_____$$
+_bk;t=1745322210701         $$______$$
+_bk;t=1745322210701          $_______$$
+_bk;t=1745322210701    $$$$$$$________$$
+_bk;t=1745322210701  $$$_______________$$$$$$
+_bk;t=1745322210701 $$____$$$$____________$$$
+_bk;t=1745322210701 $___$$$__$$$____________$$
+_bk;t=1745322210701 $$________$$$____________$
+_bk;t=1745322210701  $$____$$$$$$____________$
+_bk;t=1745322210701  $$$$$$$____$$___________$
+_bk;t=1745322210701  $$_______$$$$___________$
+_bk;t=1745322210701   $$$$$$$$$__$$_________$$
+_bk;t=1745322210701    $________$$$$_____$$$$
+_bk;t=1745322210701    $$____$$$$$$____$$$$$$
+_bk;t=1745322210701     $$$$$$____$$__$$
+_bk;t=1745322210701       $_____$$$_$$$
+_bk;t=1745322210701        $$$$$$$$$$[0m
+_bk;t=1745322210701
+_bk;t=1745322210701If you have any questions or need help email support@buildkite.com, we'd be happy to help!
+_bk;t=1745322210701
+_bk;t=1745322210701[31m<3[0m Buildkite
+_bk;t=1745322210701
+_bk;t=1745322210701+++ :frame_with_picture: Inline image uploaded as a build artifact
+_bk;t=1745322210701]1338;url=artifact://artifacts/image.gif;alt=Rainbows
+_bk;t=1745322210702~~~ Running local post-command hook
+_bk;t=1745322210702[90m$[0m .buildkite/hooks/post-command
+_bk;t=1745322210714This is an example of a post-command hook from .buildkite/hooks/post-command
+_bk;t=1745322210725~~~ Uploading artifacts
+_bk;t=1745322210725[90m$[0m buildkite-agent artifact upload artifacts/*
+_bk;t=1745322210735[38;5;48m2025-04-22 11:43:30 INFO  [0m [0mFound 2 files that match "artifacts/*"[0m
+_bk;t=1745322210735[38;5;48m2025-04-22 11:43:30 INFO  [0m [0mUploading to default Buildkite artifact storage[0m
+_bk;t=1745322210735[38;5;48m2025-04-22 11:43:30 INFO  [0m [0mCreating (0-2)/2 artifacts[0m
+_bk;t=1745322210866[38;5;48m2025-04-22 11:43:30 INFO  [0m [0mUploading 01965d4f-7693-403b-a31b-85b3bc6cfce7 artifacts/image.gif (572 KiB)[0m
+_bk;t=1745322210868[38;5;48m2025-04-22 11:43:30 INFO  [0m [0mUploading 01965d4f-7693-4846-b27e-88bb2f6012ae artifacts/thumbsup.txt (522 B)[0m
+_bk;t=1745322211254[38;5;48m2025-04-22 11:43:31 INFO  [0m [0mArtifact uploads completed successfully[0m
+_bk;t=1745322211256~~~ Running global pre-exit hook
+_bk;t=1745322211256[90m$[0m /buildkite/agent/hooks/pre-exit
+_bk;t=1745322211267No cache paths specified. Skipping cache mounting.
