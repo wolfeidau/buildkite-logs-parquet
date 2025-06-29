@@ -1,0 +1,24 @@
+services:
+  golangci-lint:
+    image: golangci/golangci-lint:v2.1.6
+    working_dir: /app
+    volumes:
+      - .:/app:cached
+      - gocache:/gocache
+      - gomodcache:/gomodcache
+    environment:
+      - GOCACHE=/gocache
+      - GOMODCACHE=/gomodcache
+    command: golangci-lint run --timeout 5m --config .golangci.yml
+  golang:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    working_dir: /app
+    volumes:
+      - .:/app:cached
+      - gocache:/gocache
+      - gomodcache:/gomodcache
+volumes:
+  gocache:
+  gomodcache:

@@ -1,0 +1,15 @@
+steps:
+  - group: ':mag: QA'
+    id: quality_checks
+    steps:
+      - key: lint
+        label: ':golangci-lint: lint'
+        plugins:
+          - docker-compose#v5.8.0:
+              run: golangci-lint
+      - key: test
+        label: ':go test: test'
+        command: go test -v ./...
+        plugins:
+          - docker-compose#v5.8.0:
+              run: golang
