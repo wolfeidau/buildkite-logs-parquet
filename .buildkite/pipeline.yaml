@@ -8,7 +8,7 @@ steps:
           - docker-compose#v5.8.0:
               run: golangci-lint
       - key: test
-        label: ':go test: test'
+        label: ':go: test'
         command: go test -v ./...
         plugins:
           - docker-compose#v5.8.0:
