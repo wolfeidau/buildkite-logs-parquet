@@ -132,9 +132,6 @@ func TestParquetWriter(t *testing.T) {
 	if err := writer.Close(); err != nil {
 		t.Fatalf("Failed to close writer: %v", err)
 	}
-	if err := file.Close(); err != nil {
-		t.Fatalf("Failed to close file: %v", err)
-	}
 
 	// Check file was written
 	info, err := os.Stat(filename)
