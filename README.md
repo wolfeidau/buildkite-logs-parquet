@@ -301,7 +301,7 @@ Each entry is automatically associated with the most recent group header (`~~~`,
 
 ## Parquet Export
 
-The parser can export log entries to [Apache Parquet](https://parquet.apache.org/) format for efficient storage and analysis:
+The parser can export log entries to [Apache Parquet](https://parquet.apache.org/) format using the official [Apache Arrow Go](https://github.com/apache/arrow/tree/main/go) implementation for efficient storage and analysis:
 
 ### Benefits of Parquet Format
 
@@ -481,10 +481,10 @@ go test -bench=. -benchmem
 
 **ANSI Stripping**: ~7.7M ops/sec, 160 B/op, 2 allocs/op
 
-**Parquet Export Performance (1,000 lines):**
-- **Slice export**: ~2,500 ops/sec, 2.8 MB allocated
-- **Iterator export**: ~1,600 ops/sec, 3.9 MB allocated
-- **Seq2 export**: ~1,600 ops/sec, 4.0 MB allocated
+**Parquet Export Performance (1,000 lines, Apache Arrow):**
+- **Slice export**: ~1,500 ops/sec, 780 KB allocated
+- **Iterator export**: ~1,100 ops/sec, 1.1 MB allocated
+- **Seq2 export**: ~1,100 ops/sec, 1.2 MB allocated
 
 **Content Classification Performance (1,000 entries):**
 - **IsCommand()**: ~15,000 ops/sec, 84 KB allocated
