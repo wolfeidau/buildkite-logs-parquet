@@ -2,7 +2,7 @@ module github.com/wolfeidau/buildkite-logs-parquet
 
 go 1.24.4
 
-require github.com/parquet-go/parquet-go v0.25.1
+require github.com/apache/arrow/go/v18 v18.0.0
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect

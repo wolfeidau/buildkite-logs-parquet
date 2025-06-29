@@ -129,3 +129,79 @@ func TestParquetWriter(t *testing.T) {
 		t.Error("Parquet file is empty")
 	}
 }
+
+func TestParquetSeq2Export(t *testing.T) {
+	parser := NewParser()
+	
+	testData := "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook\n" +
+		"\x1b_bk;t=1745322209922\x07$ /buildkite/agent/hooks/environment\n" +
+		"\x1b_bk;t=1745322209923\x07Some regular output"
+
+	reader := strings.NewReader(testData)
+	
+	// Export using Seq2
+	filename := "test_seq2_output.parquet"
+	err := ExportSeq2ToParquet(parser.All(reader), filename)
+	if err != nil {
+		t.Fatalf("ExportSeq2ToParquet() error = %v", err)
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		t.Fatalf("Parquet file was not created")
+	}
+
+	// Cleanup
+	defer os.Remove(filename)
+
+	// Check file is not empty
+	info, err := os.Stat(filename)
+	if err != nil {
+		t.Fatalf("Failed to stat parquet file: %v", err)
+	}
+	
+	if info.Size() == 0 {
+		t.Error("Parquet file is empty")
+	}
+}
+
+func TestParquetSeq2ExportWithFilter(t *testing.T) {
+	parser := NewParser()
+	
+	testData := "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook\n" +
+		"\x1b_bk;t=1745322209922\x07$ /buildkite/agent/hooks/environment\n" +
+		"\x1b_bk;t=1745322209923\x07Some regular output\n" +
+		"\x1b_bk;t=1745322209924\x07$ git clone repo"
+
+	reader := strings.NewReader(testData)
+	
+	// Filter for commands only
+	filterFunc := func(entry *LogEntry) bool {
+		return entry.IsCommand()
+	}
+	
+	// Export using Seq2 with filter
+	filename := "test_seq2_filtered.parquet"
+	err := ExportSeq2ToParquetWithFilter(parser.All(reader), filename, filterFunc)
+	if err != nil {
+		t.Fatalf("ExportSeq2ToParquetWithFilter() error = %v", err)
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		t.Fatalf("Parquet file was not created")
+	}
+
+	// Cleanup
+	defer os.Remove(filename)
+
+	// Check file is not empty (should contain 2 command entries)
+	info, err := os.Stat(filename)
+	if err != nil {
+		t.Fatalf("Failed to stat parquet file: %v", err)
+	}
+	
+	if info.Size() == 0 {
+		t.Error("Parquet file is empty")
+	}
+}

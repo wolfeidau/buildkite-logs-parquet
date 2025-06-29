@@ -17,6 +17,7 @@ type Config struct {
 	ShowSummary  bool
 	ShowGroups   bool
 	ParquetFile  string
+	UseSeq2      bool
 }
 
 type ProcessingSummary struct {
@@ -39,6 +40,7 @@ func main() {
 	flag.BoolVar(&config.ShowSummary, "summary", false, "Show processing summary at the end")
 	flag.BoolVar(&config.ShowGroups, "groups", false, "Show group/section information")
 	flag.StringVar(&config.ParquetFile, "parquet", "", "Export to Parquet file (e.g., output.parquet)")
+	flag.BoolVar(&config.UseSeq2, "use-seq2", false, "Use Go 1.23+ iter.Seq2 for iteration (experimental)")
 	flag.Parse()
 
 	if config.FilePath == "" {
@@ -75,7 +77,14 @@ func run(config *Config) error {
 
 	// If exporting to Parquet, handle that separately
 	if config.ParquetFile != "" {
-		err = exportToParquet(iterator, config.ParquetFile, config.Filter, summary)
+		if config.UseSeq2 {
+			// Use the new Seq2 iterator approach
+			err = exportToParquetSeq2(file, parser, config.ParquetFile, config.Filter, summary)
+		} else {
+			// Use the traditional iterator approach
+			err = exportToParquet(iterator, config.ParquetFile, config.Filter, summary)
+		}
+		
 		if err != nil {
 			return err
 		}
@@ -84,7 +93,11 @@ func run(config *Config) error {
 			printSummary(summary)
 		}
 		
-		fmt.Fprintf(os.Stderr, "Exported %d entries to %s\n", summary.FilteredEntries, config.ParquetFile)
+		iteratorType := "iterator"
+		if config.UseSeq2 {
+			iteratorType = "Seq2"
+		}
+		fmt.Fprintf(os.Stderr, "Exported %d entries to %s (using %s)\n", summary.FilteredEntries, config.ParquetFile, iteratorType)
 		return nil
 	}
 
@@ -328,4 +341,63 @@ func exportToParquet(iterator *buildkitelogs.LogIterator, filename string, filte
 	}
 
 	return iterator.Err()
+}
+
+func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
+	// Create filter function based on filter string
+	var filterFunc func(*buildkitelogs.LogEntry) bool
+	if filter != "" {
+		filterFunc = func(entry *buildkitelogs.LogEntry) bool {
+			return shouldIncludeEntry(entry, filter)
+		}
+	}
+
+	// Create a sequence that counts entries for summary and handles errors
+	countingSeq := func(yield func(*buildkitelogs.LogEntry, error) bool) {
+		// Reset file position to beginning
+		file.Seek(0, 0)
+		
+		lineNum := 0
+		for entry, err := range parser.All(file) {
+			lineNum++
+			
+			// Handle parse errors - still count them but log warnings
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Error parsing line %d: %v\n", lineNum, err)
+				if !yield(nil, err) {
+					return
+				}
+				continue
+			}
+			
+			summary.TotalEntries++
+			
+			// Update entry type counts
+			if entry.HasTimestamp() {
+				summary.EntriesWithTime++
+			}
+			if entry.IsCommand() {
+				summary.Commands++
+			}
+			if entry.IsGroup() {
+				summary.Sections++
+			}
+			if entry.IsProgress() {
+				summary.Progress++
+			}
+			
+			// Apply filter if specified
+			if filterFunc == nil || filterFunc(entry) {
+				summary.FilteredEntries++
+			}
+			
+			// Always yield the entry for export consideration
+			if !yield(entry, nil) {
+				return
+			}
+		}
+	}
+
+	// Export using the Seq2 iterator with filtering
+	return buildkitelogs.ExportSeq2ToParquetWithFilter(countingSeq, filename, filterFunc)
 }

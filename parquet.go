@@ -1,6 +1,8 @@
 package buildkitelogs
 
 import (
+	"fmt"
+	"iter"
 	"os"
 	"time"
 
@@ -147,4 +149,122 @@ func (pw *ParquetWriter) WriteBatch(entries []*LogEntry) error {
 // Close closes the Parquet writer
 func (pw *ParquetWriter) Close() error {
 	return pw.writer.Close()
+}
+
+// ExportSeq2ToParquet exports log entries using Go 1.23+ iter.Seq2 for efficient iteration
+func ExportSeq2ToParquet(seq iter.Seq2[*LogEntry, error], filename string) error {
+	// Create output file
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create Parquet writer
+	writer := parquet.NewGenericWriter[ParquetLogEntry](file)
+	defer writer.Close()
+
+	// Process entries in batches for memory efficiency
+	const batchSize = 1000
+	batch := make([]ParquetLogEntry, 0, batchSize)
+
+	for entry, err := range seq {
+		// Handle errors during iteration
+		if err != nil {
+			return fmt.Errorf("error during iteration: %w", err)
+		}
+		parquetEntry := ParquetLogEntry{
+			Timestamp:   entry.Timestamp.UnixMilli(),
+			Content:     entry.Content,
+			Group:       entry.Group,
+			HasTime:     entry.HasTimestamp(),
+			IsCommand:   entry.IsCommand(),
+			IsGroup:     entry.IsGroup(),
+			IsProgress:  entry.IsProgress(),
+			RawLineSize: int32(len(entry.RawLine)),
+		}
+		
+		batch = append(batch, parquetEntry)
+		
+		// Write batch when it's full
+		if len(batch) >= batchSize {
+			_, err := writer.Write(batch)
+			if err != nil {
+				return err
+			}
+			batch = batch[:0] // Reset batch
+		}
+	}
+
+	// Write remaining entries
+	if len(batch) > 0 {
+		_, err := writer.Write(batch)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ExportSeq2ToParquetWithFilter exports filtered log entries using iter.Seq2
+func ExportSeq2ToParquetWithFilter(seq iter.Seq2[*LogEntry, error], filename string, filterFunc func(*LogEntry) bool) error {
+	// Create output file
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create Parquet writer
+	writer := parquet.NewGenericWriter[ParquetLogEntry](file)
+	defer writer.Close()
+
+	// Process entries in batches for memory efficiency
+	const batchSize = 1000
+	batch := make([]ParquetLogEntry, 0, batchSize)
+
+	for entry, err := range seq {
+		// Handle errors during iteration
+		if err != nil {
+			return fmt.Errorf("error during iteration: %w", err)
+		}
+		
+		// Apply filter if provided
+		if filterFunc != nil && !filterFunc(entry) {
+			continue
+		}
+
+		parquetEntry := ParquetLogEntry{
+			Timestamp:   entry.Timestamp.UnixMilli(),
+			Content:     entry.Content,
+			Group:       entry.Group,
+			HasTime:     entry.HasTimestamp(),
+			IsCommand:   entry.IsCommand(),
+			IsGroup:     entry.IsGroup(),
+			IsProgress:  entry.IsProgress(),
+			RawLineSize: int32(len(entry.RawLine)),
+		}
+		
+		batch = append(batch, parquetEntry)
+		
+		// Write batch when it's full
+		if len(batch) >= batchSize {
+			_, err := writer.Write(batch)
+			if err != nil {
+				return err
+			}
+			batch = batch[:0] // Reset batch
+		}
+	}
+
+	// Write remaining entries
+	if len(batch) > 0 {
+		_, err := writer.Write(batch)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

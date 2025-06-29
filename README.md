@@ -59,6 +59,8 @@ func main() {
 
 For large log files, use the iterator interface to keep memory usage low:
 
+#### Traditional Iterator (Go 1.22 and earlier)
+
 ```go
 package main
 
@@ -93,6 +95,49 @@ func main() {
     // Check for errors
     if err := iterator.Err(); err != nil {
         panic(err)
+    }
+}
+```
+
+#### Modern Seq2 Iterator (Go 1.23+)
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+    
+    buildkitelogs "github.com/wolfeidau/buildkite-logs-parquet"
+)
+
+func main() {
+    parser := buildkitelogs.NewParser()
+    
+    file, err := os.Open("buildkite.log")
+    if err != nil {
+        panic(err)
+    }
+    defer file.Close()
+    
+    // Use the modern iter.Seq2 pattern with proper error handling
+    lineNum := 0
+    for entry, err := range parser.All(file) {
+        if err != nil {
+            panic(err)
+        }
+        
+        lineNum++
+        
+        // Process entries
+        if entry.IsCommand() {
+            fmt.Printf("Line %d: [%s] %s\n", lineNum, entry.Timestamp, entry.CleanContent())
+        }
+        
+        // Early exit example - stop after 100 lines
+        if lineNum >= 100 {
+            break
+        }
     }
 }
 ```
@@ -209,6 +254,7 @@ This exports only command entries to a smaller Parquet file for analysis.
 - `-summary`: Show processing summary at the end
 - `-groups`: Show group/section information for each entry
 - `-parquet <path>`: Export to Parquet file (e.g., output.parquet)
+- `-use-seq2`: Use Go 1.23+ iter.Seq2 for iteration (experimental)
 
 ## Log Entry Types
 
@@ -292,6 +338,12 @@ The exported Parquet files contain the following columns:
 ./bklog -file buildkite.log -parquet commands.parquet -filter command
 ```
 
+**Export using Go 1.23+ iter.Seq2:**
+```bash
+./bklog -file buildkite.log -parquet output.parquet -use-seq2 -summary
+```
+This uses the modern `iter.Seq2[int, *LogEntry]` iterator pattern introduced in Go 1.23.
+
 **Analyze with Python/Pandas:**
 ```python
 import pandas as pd
@@ -341,6 +393,9 @@ func (p *Parser) ParseLine(line string) (*LogEntry, error)
 // Create memory-efficient iterator (recommended)
 func (p *Parser) NewIterator(reader io.Reader) *LogIterator
 
+// Create Go 1.23+ iter.Seq2 iterator with proper error handling (modern approach)
+func (p *Parser) All(reader io.Reader) iter.Seq2[*LogEntry, error]
+
 // Parse multiple lines from a reader (legacy - loads all into memory)
 func (p *Parser) ParseReader(reader io.Reader) ([]*LogEntry, error)
 
@@ -378,6 +433,12 @@ func ExportToParquet(entries []*LogEntry, filename string) error
 // Export from iterator to Parquet file (memory-efficient)
 func ExportIteratorToParquet(iterator *LogIterator, filename string) error
 
+// Export using Go 1.23+ iter.Seq2 (modern approach)
+func ExportSeq2ToParquet(seq iter.Seq2[*LogEntry, error], filename string) error
+
+// Export using iter.Seq2 with filtering
+func ExportSeq2ToParquetWithFilter(seq iter.Seq2[*LogEntry, error], filename string, filterFunc func(*LogEntry) bool) error
+
 // Create a new Parquet writer for streaming
 func NewParquetWriter(file *os.File) *ParquetWriter
 
@@ -401,21 +462,35 @@ go test -bench=. -benchmem
 #### Key Results (Apple M3 Pro)
 
 **Single Line Parsing (Byte-based):**
-- OSC sequence with timestamp: ~46 ns/op, 112 B/op, 2 allocs/op
-- Regular line (no timestamp): ~14 ns/op, 64 B/op, 1 allocs/op
+- OSC sequence with timestamp: ~64 ns/op, 192 B/op, 3 allocs/op
+- Regular line (no timestamp): ~29 ns/op, 128 B/op, 2 allocs/op
+- ANSI-heavy line: ~68 ns/op, 224 B/op, 3 allocs/op
+- Progress line: ~65 ns/op, 192 B/op, 3 allocs/op
 
 **Memory Usage Comparison (10,000 lines):**
-- **Iterator approach**: ~2.3 MB allocated, 38,673 allocations
-- **Legacy ParseReader**: ~2.6 MB allocated, 38,691 allocations
-- **Memory savings**: ~13% reduction with iterator
+- **Iterator approach**: ~3.5 MB allocated, 64,007 allocations
+- **Legacy ParseReader**: ~3.8 MB allocated, 64,025 allocations
+- **Seq2 Iterator**: ~3.5 MB allocated, 64,006 allocations
+- **Memory savings**: ~8% reduction with iterators vs ParseReader
 
 **Throughput:**
-- **100 lines**: ~25,000 ops/sec
-- **1,000 lines**: ~2,500 ops/sec  
-- **10,000 lines**: ~250 ops/sec
-- **100,000 lines**: ~25 ops/sec
+- **100 lines**: ~50,000 ops/sec (iterator), ~51,000 ops/sec (Seq2)
+- **1,000 lines**: ~5,200 ops/sec (iterator), ~5,200 ops/sec (Seq2)
+- **10,000 lines**: ~510 ops/sec (iterator), ~510 ops/sec (Seq2)
+- **100,000 lines**: ~54 ops/sec (iterator), ~54 ops/sec (Seq2)
 
-**ANSI Stripping (Byte-based)**: ~8.3M ops/sec, 160 B/op, 2 allocs/op
+**ANSI Stripping**: ~7.7M ops/sec, 160 B/op, 2 allocs/op
+
+**Parquet Export Performance (1,000 lines):**
+- **Slice export**: ~2,500 ops/sec, 2.8 MB allocated
+- **Iterator export**: ~1,600 ops/sec, 3.9 MB allocated
+- **Seq2 export**: ~1,600 ops/sec, 4.0 MB allocated
+
+**Content Classification Performance (1,000 entries):**
+- **IsCommand()**: ~15,000 ops/sec, 84 KB allocated
+- **IsGroup()**: ~14,000 ops/sec, 84 KB allocated
+- **IsProgress()**: ~64,000 ops/sec, 9.5 KB allocated
+- **CleanContent()**: ~15,000 ops/sec, 84 KB allocated
 
 ### Performance Improvements
 

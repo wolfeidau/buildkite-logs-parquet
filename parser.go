@@ -3,6 +3,7 @@ package buildkitelogs
 import (
 	"bufio"
 	"io"
+	"iter"
 	"strings"
 	"time"
 )
@@ -81,6 +82,32 @@ func (p *Parser) NewIterator(reader io.Reader) *LogIterator {
 	return &LogIterator{
 		scanner: bufio.NewScanner(reader),
 		parser:  p,
+	}
+}
+
+// All returns an iterator over all log entries using Go 1.23+ iter.Seq2 pattern
+// Each iteration yields a *LogEntry and an error, following Go's idiomatic error handling
+func (p *Parser) All(reader io.Reader) iter.Seq2[*LogEntry, error] {
+	return func(yield func(*LogEntry, error) bool) {
+		scanner := bufio.NewScanner(reader)
+		
+		for scanner.Scan() {
+			line := scanner.Text()
+			entry, err := p.ParseLine(line)
+			
+			// Yield both the entry (which may be nil if err != nil) and the error
+			if !yield(entry, err) {
+				return
+			}
+			
+			// If there was a parse error, we've yielded it to the caller
+			// They can decide whether to continue or stop
+		}
+		
+		// Check for scanner errors and yield final error if any
+		if err := scanner.Err(); err != nil {
+			yield(nil, err)
+		}
 	}
 }
 
