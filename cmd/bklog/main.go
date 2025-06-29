@@ -10,14 +10,14 @@ import (
 )
 
 type Config struct {
-	FilePath     string
-	OutputJSON   bool
-	StripANSI    bool
-	Filter       string
-	ShowSummary  bool
-	ShowGroups   bool
-	ParquetFile  string
-	UseSeq2      bool
+	FilePath    string
+	OutputJSON  bool
+	StripANSI   bool
+	Filter      string
+	ShowSummary bool
+	ShowGroups  bool
+	ParquetFile string
+	UseSeq2     bool
 }
 
 type ProcessingSummary struct {
@@ -31,31 +31,121 @@ type ProcessingSummary struct {
 }
 
 func main() {
-	config := &Config{}
-	
-	flag.StringVar(&config.FilePath, "file", "", "Path to Buildkite log file")
-	flag.BoolVar(&config.OutputJSON, "json", false, "Output as JSON")
-	flag.BoolVar(&config.StripANSI, "strip-ansi", false, "Strip ANSI escape sequences from output")
-	flag.StringVar(&config.Filter, "filter", "", "Filter entries by type: command, progress, group")
-	flag.BoolVar(&config.ShowSummary, "summary", false, "Show processing summary at the end")
-	flag.BoolVar(&config.ShowGroups, "groups", false, "Show group/section information")
-	flag.StringVar(&config.ParquetFile, "parquet", "", "Export to Parquet file (e.g., output.parquet)")
-	flag.BoolVar(&config.UseSeq2, "use-seq2", false, "Use Go 1.23+ iter.Seq2 for iteration (experimental)")
-	flag.Parse()
-
-	if config.FilePath == "" {
-		fmt.Fprintf(os.Stderr, "Usage: %s -file <log-file> [options]\n", os.Args[0])
-		flag.PrintDefaults()
+	if len(os.Args) < 2 {
+		printUsage()
 		os.Exit(1)
 	}
 
-	if err := run(config); err != nil {
+	subcommand := os.Args[1]
+
+	switch subcommand {
+	case "parse":
+		handleParseCommand()
+	case "query":
+		handleQueryCommand()
+	case "help", "-h", "--help":
+		printUsage()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown subcommand: %s\n\n", subcommand)
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+func printUsage() {
+	fmt.Printf("Usage: %s <subcommand> [options]\n\n", os.Args[0])
+	fmt.Println("Subcommands:")
+	fmt.Println("  parse   Parse Buildkite log files and export to various formats")
+	fmt.Println("  query   Query Parquet log files")
+	fmt.Println("  help    Show this help message")
+	fmt.Println("")
+	fmt.Printf("Use '%s <subcommand> -h' for subcommand-specific help", os.Args[0])
+}
+
+func handleParseCommand() {
+	var config Config
+
+	parseFlags := flag.NewFlagSet("parse", flag.ExitOnError)
+	parseFlags.StringVar(&config.FilePath, "file", "", "Path to Buildkite log file (required)")
+	parseFlags.BoolVar(&config.OutputJSON, "json", false, "Output as JSON")
+	parseFlags.BoolVar(&config.StripANSI, "strip-ansi", false, "Strip ANSI escape sequences from output")
+	parseFlags.StringVar(&config.Filter, "filter", "", "Filter entries by type: command, progress, group")
+	parseFlags.BoolVar(&config.ShowSummary, "summary", false, "Show processing summary at the end")
+	parseFlags.BoolVar(&config.ShowGroups, "groups", false, "Show group/section information")
+	parseFlags.StringVar(&config.ParquetFile, "parquet", "", "Export to Parquet file (e.g., output.parquet)")
+	parseFlags.BoolVar(&config.UseSeq2, "use-seq2", false, "Use Go 1.23+ iter.Seq2 for iteration (experimental)")
+
+	parseFlags.Usage = func() {
+		fmt.Printf("Usage: %s parse -file <log-file> [options]\n\n", os.Args[0])
+		fmt.Println("Parse Buildkite log files and export to various formats.")
+		fmt.Println("\nOptions:")
+		parseFlags.PrintDefaults()
+		fmt.Println("\nExamples:")
+		fmt.Printf("  %s parse -file buildkite.log -strip-ansi\n", os.Args[0])
+		fmt.Printf("  %s parse -file buildkite.log -filter command -json\n", os.Args[0])
+		fmt.Printf("  %s parse -file buildkite.log -parquet output.parquet -summary\n", os.Args[0])
+	}
+
+	parseFlags.Parse(os.Args[2:])
+
+	if config.FilePath == "" {
+		parseFlags.Usage()
+		os.Exit(1)
+	}
+
+	if err := runParse(&config); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(config *Config) error {
+func handleQueryCommand() {
+	var config QueryConfig
+
+	queryFlags := flag.NewFlagSet("query", flag.ExitOnError)
+	queryFlags.StringVar(&config.ParquetFile, "file", "", "Path to Parquet log file (required)")
+	queryFlags.StringVar(&config.Operation, "op", "list-groups", "Query operation: list-groups, by-group")
+	queryFlags.StringVar(&config.GroupName, "group", "", "Group name to filter by (for by-group operation)")
+	queryFlags.StringVar(&config.Format, "format", "text", "Output format: text, json")
+	queryFlags.BoolVar(&config.ShowStats, "stats", true, "Show query statistics")
+
+	queryFlags.Usage = func() {
+		fmt.Printf("Usage: %s query -file <parquet-file> [options]\n\n", os.Args[0])
+		fmt.Println("Query Parquet log files.")
+		fmt.Println("\nOptions:")
+		queryFlags.PrintDefaults()
+		fmt.Println("\nOperations:")
+		fmt.Println("  list-groups  List all groups with statistics")
+		fmt.Println("  by-group     Show entries for a specific group")
+		fmt.Println("\nExamples:")
+		fmt.Printf("  %s query -file logs.parquet -op list-groups\n", os.Args[0])
+		fmt.Printf("  %s query -file logs.parquet -op by-group -group \"Running tests\"\n", os.Args[0])
+		fmt.Printf("  %s query -file logs.parquet -op list-groups -format json\n", os.Args[0])
+	}
+
+	queryFlags.Parse(os.Args[2:])
+
+	if config.ParquetFile == "" {
+		queryFlags.Usage()
+		os.Exit(1)
+	}
+
+	if err := runQuery(&config); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func runQuery(config *QueryConfig) error {
+	result, err := executeQuery(*config)
+	if err != nil {
+		return err
+	}
+
+	return formatQueryResult(result, *config)
+}
+
+func runParse(config *Config) error {
 	file, err := os.Open(config.FilePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -68,48 +158,37 @@ func run(config *Config) error {
 		return fmt.Errorf("failed to get file info: %w", err)
 	}
 
-	parser := buildkitelogs.NewParser()
-	iterator := parser.NewIterator(file)
-
 	summary := &ProcessingSummary{
 		BytesProcessed: fileInfo.Size(),
 	}
 
-	// If exporting to Parquet, handle that separately
+	parser := buildkitelogs.NewParser()
+
+	// Handle Parquet export if specified
 	if config.ParquetFile != "" {
 		if config.UseSeq2 {
-			// Use the new Seq2 iterator approach
 			err = exportToParquetSeq2(file, parser, config.ParquetFile, config.Filter, summary)
 		} else {
-			// Use the traditional iterator approach
-			err = exportToParquet(iterator, config.ParquetFile, config.Filter, summary)
+			err = exportToParquet(file, parser, config.ParquetFile, config.Filter, summary)
 		}
-		
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to export to Parquet: %w", err)
 		}
-		
-		if config.ShowSummary {
-			printSummary(summary)
-		}
-		
-		iteratorType := "iterator"
-		if config.UseSeq2 {
-			iteratorType = "Seq2"
-		}
-		fmt.Fprintf(os.Stderr, "Exported %d entries to %s (using %s)\n", summary.FilteredEntries, config.ParquetFile, iteratorType)
-		return nil
-	}
-
-	// Regular output (text or JSON)
-	if config.OutputJSON {
-		err = outputJSONIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
 	} else {
-		err = outputTextIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
-	}
-
-	if err != nil {
-		return err
+		// Regular output processing
+		if config.UseSeq2 {
+			err = outputSeq2(file, parser, config.OutputJSON, config.Filter, config.StripANSI, config.ShowGroups, summary)
+		} else {
+			iterator := parser.NewIterator(file)
+			if config.OutputJSON {
+				err = outputJSONIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
+			} else {
+				err = outputTextIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("failed to process file: %w", err)
+		}
 	}
 
 	if config.ShowSummary {
@@ -119,26 +198,17 @@ func run(config *Config) error {
 	return nil
 }
 
-func shouldIncludeEntry(entry *buildkitelogs.LogEntry, filter string) bool {
-	if filter == "" {
-		return true
-	}
+func outputSeq2(file *os.File, parser *buildkitelogs.Parser, outputJSON bool, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
+	// Reset file position
+	file.Seek(0, 0)
 
-	switch filter {
-	case "command":
-		return entry.IsCommand()
-	case "progress":
-		return entry.IsProgress()
-	case "group":
-		return entry.IsGroup()
-	case "section": // deprecated alias for group
-		return entry.IsGroup()
-	default:
-		return true
+	if outputJSON {
+		return outputJSONSeq2(file, parser, filter, stripANSI, showGroups, summary)
 	}
+	return outputTextSeq2(file, parser, filter, stripANSI, showGroups, summary)
 }
 
-func outputJSONIterator(iterator *buildkitelogs.LogIterator, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
+func outputJSONSeq2(file *os.File, parser *buildkitelogs.Parser, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
 	type JSONEntry struct {
 		Timestamp string `json:"timestamp,omitempty"`
 		Content   string `json:"content"`
@@ -147,11 +217,14 @@ func outputJSONIterator(iterator *buildkitelogs.LogIterator, filter string, stri
 	}
 
 	var jsonEntries []JSONEntry
-	
-	for iterator.Next() {
-		entry := iterator.Entry()
+
+	for entry, err := range parser.All(file) {
+		if err != nil {
+			return fmt.Errorf("parse error: %w", err)
+		}
+
 		summary.TotalEntries++
-		
+
 		// Update entry type counts
 		if entry.HasTimestamp() {
 			summary.EntriesWithTime++
@@ -165,36 +238,32 @@ func outputJSONIterator(iterator *buildkitelogs.LogIterator, filter string, stri
 		if entry.IsProgress() {
 			summary.Progress++
 		}
-		
+
 		if !shouldIncludeEntry(entry, filter) {
 			continue
 		}
-		
+
 		summary.FilteredEntries++
-		
+
 		content := entry.Content
 		if stripANSI {
 			content = entry.CleanContent()
 		}
-		
+
 		jsonEntry := JSONEntry{
 			Content: content,
 			HasTime: entry.HasTimestamp(),
 		}
-		
+
 		if entry.HasTimestamp() {
-			jsonEntry.Timestamp = entry.Timestamp.Format("2006-01-02T15:04:05.000Z07:00")
+			jsonEntry.Timestamp = entry.Timestamp.Format("2006-01-02T15:04:05.000Z")
 		}
-		
+
 		if showGroups && entry.Group != "" {
 			jsonEntry.Group = entry.Group
 		}
-		
+
 		jsonEntries = append(jsonEntries, jsonEntry)
-	}
-	
-	if err := iterator.Err(); err != nil {
-		return fmt.Errorf("error reading log: %w", err)
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
@@ -202,11 +271,14 @@ func outputJSONIterator(iterator *buildkitelogs.LogIterator, filter string, stri
 	return encoder.Encode(jsonEntries)
 }
 
-func outputTextIterator(iterator *buildkitelogs.LogIterator, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
-	for iterator.Next() {
-		entry := iterator.Entry()
+func outputTextSeq2(file *os.File, parser *buildkitelogs.Parser, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
+	for entry, err := range parser.All(file) {
+		if err != nil {
+			return fmt.Errorf("parse error: %w", err)
+		}
+
 		summary.TotalEntries++
-		
+
 		// Update entry type counts
 		if entry.HasTimestamp() {
 			summary.EntriesWithTime++
@@ -220,13 +292,13 @@ func outputTextIterator(iterator *buildkitelogs.LogIterator, filter string, stri
 		if entry.IsProgress() {
 			summary.Progress++
 		}
-		
+
 		if !shouldIncludeEntry(entry, filter) {
 			continue
 		}
-		
+
 		summary.FilteredEntries++
-		
+
 		content := entry.Content
 		if stripANSI {
 			content = entry.CleanContent()
@@ -246,61 +318,37 @@ func outputTextIterator(iterator *buildkitelogs.LogIterator, filter string, stri
 			}
 		}
 	}
-	
-	return iterator.Err()
+
+	return nil
 }
 
-func printSummary(summary *ProcessingSummary) {
-	fmt.Fprintf(os.Stderr, "\n--- Processing Summary ---\n")
-	fmt.Fprintf(os.Stderr, "Bytes processed: %s\n", formatBytes(summary.BytesProcessed))
-	fmt.Fprintf(os.Stderr, "Total entries: %d\n", summary.TotalEntries)
-	
-	if summary.FilteredEntries != summary.TotalEntries {
-		fmt.Fprintf(os.Stderr, "Filtered entries: %d\n", summary.FilteredEntries)
+func shouldIncludeEntry(entry *buildkitelogs.LogEntry, filter string) bool {
+	switch filter {
+	case "command":
+		return entry.IsCommand()
+	case "group", "section": // Support both for backward compatibility
+		return entry.IsGroup()
+	case "progress":
+		return entry.IsProgress()
+	default:
+		return true
 	}
-	
-	fmt.Fprintf(os.Stderr, "Entries with timestamps: %d\n", summary.EntriesWithTime)
-	fmt.Fprintf(os.Stderr, "Commands: %d\n", summary.Commands)
-	fmt.Fprintf(os.Stderr, "Sections: %d\n", summary.Sections)
-	fmt.Fprintf(os.Stderr, "Progress updates: %d\n", summary.Progress)
-	
-	regularEntries := summary.TotalEntries - summary.Commands - summary.Sections - summary.Progress
-	fmt.Fprintf(os.Stderr, "Regular output: %d\n", regularEntries)
 }
 
-func formatBytes(bytes int64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
+func outputJSONIterator(iterator *buildkitelogs.LogIterator, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
+	type JSONEntry struct {
+		Timestamp string `json:"timestamp,omitempty"`
+		Content   string `json:"content"`
+		HasTime   bool   `json:"has_timestamp"`
+		Group     string `json:"group,omitempty"`
 	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
 
-func exportToParquet(iterator *buildkitelogs.LogIterator, filename string, filter string, summary *ProcessingSummary) error {
-	// Create output file
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Create Parquet writer
-	writer := buildkitelogs.NewParquetWriter(file)
-	defer writer.Close()
-
-	// Process entries in batches for memory efficiency
-	const batchSize = 1000
-	batch := make([]*buildkitelogs.LogEntry, 0, batchSize)
+	var jsonEntries []JSONEntry
 
 	for iterator.Next() {
 		entry := iterator.Entry()
 		summary.TotalEntries++
-		
+
 		// Update entry type counts
 		if entry.HasTimestamp() {
 			summary.EntriesWithTime++
@@ -314,33 +362,134 @@ func exportToParquet(iterator *buildkitelogs.LogIterator, filename string, filte
 		if entry.IsProgress() {
 			summary.Progress++
 		}
-		
+
 		if !shouldIncludeEntry(entry, filter) {
 			continue
 		}
-		
+
 		summary.FilteredEntries++
-		batch = append(batch, entry)
-		
-		// Write batch when it's full
-		if len(batch) >= batchSize {
-			err := writer.WriteBatch(batch)
-			if err != nil {
-				return err
-			}
-			batch = batch[:0] // Reset batch
+
+		content := entry.Content
+		if stripANSI {
+			content = entry.CleanContent()
 		}
+
+		jsonEntry := JSONEntry{
+			Content: content,
+			HasTime: entry.HasTimestamp(),
+		}
+
+		if entry.HasTimestamp() {
+			jsonEntry.Timestamp = entry.Timestamp.Format("2006-01-02T15:04:05.000Z")
+		}
+
+		if showGroups && entry.Group != "" {
+			jsonEntry.Group = entry.Group
+		}
+
+		jsonEntries = append(jsonEntries, jsonEntry)
 	}
 
-	// Write remaining entries
-	if len(batch) > 0 {
-		err := writer.WriteBatch(batch)
-		if err != nil {
-			return err
+	if err := iterator.Err(); err != nil {
+		return err
+	}
+
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(jsonEntries)
+}
+
+func outputTextIterator(iterator *buildkitelogs.LogIterator, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
+	for iterator.Next() {
+		entry := iterator.Entry()
+		summary.TotalEntries++
+
+		// Update entry type counts
+		if entry.HasTimestamp() {
+			summary.EntriesWithTime++
+		}
+		if entry.IsCommand() {
+			summary.Commands++
+		}
+		if entry.IsGroup() {
+			summary.Sections++
+		}
+		if entry.IsProgress() {
+			summary.Progress++
+		}
+
+		if !shouldIncludeEntry(entry, filter) {
+			continue
+		}
+
+		summary.FilteredEntries++
+
+		content := entry.Content
+		if stripANSI {
+			content = entry.CleanContent()
+		}
+
+		if showGroups && entry.Group != "" {
+			if entry.HasTimestamp() {
+				fmt.Printf("[%s] [%s] %s\n", entry.Timestamp.Format("2006-01-02 15:04:05.000"), entry.Group, content)
+			} else {
+				fmt.Printf("[%s] %s\n", entry.Group, content)
+			}
+		} else {
+			if entry.HasTimestamp() {
+				fmt.Printf("[%s] %s\n", entry.Timestamp.Format("2006-01-02 15:04:05.000"), content)
+			} else {
+				fmt.Printf("%s\n", content)
+			}
 		}
 	}
 
 	return iterator.Err()
+}
+
+func exportToParquet(file *os.File, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
+	iterator := parser.NewIterator(file)
+
+	// Create filter function based on filter string
+	var filterFunc func(*buildkitelogs.LogEntry) bool
+	if filter != "" {
+		filterFunc = func(entry *buildkitelogs.LogEntry) bool {
+			return shouldIncludeEntry(entry, filter)
+		}
+	}
+
+	// Count entries for summary while iterating
+	var entries []*buildkitelogs.LogEntry
+	for iterator.Next() {
+		entry := iterator.Entry()
+		summary.TotalEntries++
+
+		// Update entry type counts
+		if entry.HasTimestamp() {
+			summary.EntriesWithTime++
+		}
+		if entry.IsCommand() {
+			summary.Commands++
+		}
+		if entry.IsGroup() {
+			summary.Sections++
+		}
+		if entry.IsProgress() {
+			summary.Progress++
+		}
+
+		// Apply filter if specified
+		if filterFunc == nil || filterFunc(entry) {
+			summary.FilteredEntries++
+			entries = append(entries, entry)
+		}
+	}
+
+	if err := iterator.Err(); err != nil {
+		return err
+	}
+
+	return buildkitelogs.ExportToParquet(entries, filename)
 }
 
 func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
@@ -356,11 +505,11 @@ func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename s
 	countingSeq := func(yield func(*buildkitelogs.LogEntry, error) bool) {
 		// Reset file position to beginning
 		file.Seek(0, 0)
-		
+
 		lineNum := 0
 		for entry, err := range parser.All(file) {
 			lineNum++
-			
+
 			// Handle parse errors - still count them but log warnings
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Error parsing line %d: %v\n", lineNum, err)
@@ -369,9 +518,9 @@ func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename s
 				}
 				continue
 			}
-			
+
 			summary.TotalEntries++
-			
+
 			// Update entry type counts
 			if entry.HasTimestamp() {
 				summary.EntriesWithTime++
@@ -385,12 +534,12 @@ func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename s
 			if entry.IsProgress() {
 				summary.Progress++
 			}
-			
+
 			// Apply filter if specified
 			if filterFunc == nil || filterFunc(entry) {
 				summary.FilteredEntries++
 			}
-			
+
 			// Always yield the entry for export consideration
 			if !yield(entry, nil) {
 				return
@@ -400,4 +549,19 @@ func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename s
 
 	// Export using the Seq2 iterator with filtering
 	return buildkitelogs.ExportSeq2ToParquetWithFilter(countingSeq, filename, filterFunc)
+}
+
+func printSummary(summary *ProcessingSummary) {
+	fmt.Printf("\n--- Processing Summary ---\n")
+	fmt.Printf("Bytes processed: %.1f KB\n", float64(summary.BytesProcessed)/1024)
+	fmt.Printf("Total entries: %d\n", summary.TotalEntries)
+	fmt.Printf("Entries with timestamps: %d\n", summary.EntriesWithTime)
+	fmt.Printf("Commands: %d\n", summary.Commands)
+	fmt.Printf("Sections: %d\n", summary.Sections)
+	fmt.Printf("Progress updates: %d\n", summary.Progress)
+	fmt.Printf("Regular output: %d\n", summary.TotalEntries-summary.Commands-summary.Sections-summary.Progress)
+
+	if summary.FilteredEntries > 0 {
+		fmt.Printf("Exported %d entries to %s\n", summary.FilteredEntries, "Parquet file")
+	}
 }
