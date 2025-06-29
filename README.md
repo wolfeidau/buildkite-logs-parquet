@@ -25,6 +25,7 @@ This parser extracts the timestamps and content, providing both a Go library API
 - **Stream Processing**: Parse from any `io.Reader`
 - **Group Tracking**: Automatically associate entries with build groups/sections
 - **Parquet Export**: Efficient columnar storage for analytics and data processing
+- **Parquet Query**: Fast querying of exported Parquet files with Apache Arrow Go v18
 
 ## Library Usage
 
@@ -142,6 +143,88 @@ func main() {
 }
 ```
 
+### Querying Parquet Files
+
+The library provides fast query capabilities for Parquet files using Apache Arrow Go v18:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    
+    buildkitelogs "github.com/wolfeidau/buildkite-logs-parquet"
+)
+
+func main() {
+    // Create a Parquet reader
+    reader := buildkitelogs.NewParquetReader("buildkite_logs.parquet")
+    
+    // List all groups with statistics
+    groups, err := reader.ListGroups()
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    for _, group := range groups {
+        fmt.Printf("Group: %s (%d entries, %d commands)\n", 
+            group.Name, group.EntryCount, group.Commands)
+    }
+    
+    // Filter entries by group pattern
+    entries, err := reader.FilterByGroup("environment")
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    fmt.Printf("Found %d entries containing 'environment'\n", len(entries))
+    
+    // Complete query with timing statistics
+    result, err := reader.Query("list-groups", "")
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    fmt.Printf("Query completed in %.2f ms\n", result.Stats.QueryTime)
+}
+```
+
+#### Query Operations
+
+**List Groups**: Get statistical information about all log groups
+```go
+groups, err := reader.ListGroups()
+// Returns []GroupInfo with Name, EntryCount, Commands, Progress, FirstSeen, LastSeen
+```
+
+**Filter by Group**: Find entries matching a group pattern
+```go
+entries, err := reader.FilterByGroup("test")  // Case-insensitive partial matching
+// Returns []ParquetLogEntry for matching groups
+```
+
+**Complete Query**: Full query with statistics
+```go
+result, err := reader.Query("list-groups", "")           // List all groups
+result, err := reader.Query("by-group", "environment")   // Filter by pattern
+// Returns *QueryResult with Groups/Entries and Stats (timing, counts)
+```
+
+#### Direct File Reading
+
+```go
+// Read all entries from a Parquet file
+entries, err := buildkitelogs.ReadParquetFile("logs.parquet")
+if err != nil {
+    log.Fatal(err)
+}
+
+// Use standalone functions for processing
+groups := buildkitelogs.ListGroups(entries)
+filtered := buildkitelogs.FilterByGroup(entries, "test")
+```
+
 ### Legacy API (Loads All Entries)
 
 ⚠️ **Note**: This method loads all entries into memory and is not recommended for large files.
@@ -245,7 +328,64 @@ Exported 212 entries to output.parquet
 ```
 This exports only command entries to a smaller Parquet file for analysis.
 
+### Querying Parquet Files
+
+The CLI provides fast query operations on previously exported Parquet files:
+
+**List all groups with statistics:**
+```bash
+./bklog query -file output.parquet -op list-groups
+```
+Output:
+```
+Groups found: 5
+
+GROUP NAME                                ENTRIES COMMANDS PROGRESS          FIRST SEEN           LAST SEEN
+------------------------------------------------------------------------------------------------------------------------
+~~~ Running global environment hook             2        1        0 2025-04-22 21:43:29 2025-04-22 21:43:29
+~~~ Running global pre-checkout hook            2        1        0 2025-04-22 21:43:29 2025-04-22 21:43:29
+--- :package: Build job checkout dire...        2        1        0 2025-04-22 21:43:30 2025-04-22 21:43:30
+
+--- Query Statistics ---
+Total entries: 10
+Matched entries: 10
+Total groups: 5
+Query time: 2.36 ms
+```
+
+**Filter entries by group pattern:**
+```bash
+./bklog query -file output.parquet -op by-group -group "environment"
+```
+Output:
+```
+Entries in group matching 'environment': 2
+
+[2025-04-22 21:43:29.921] [GRP] ~~~ Running global environment hook
+[2025-04-22 21:43:29.922] [CMD] $ /buildkite/agent/hooks/environment
+
+--- Query Statistics ---
+Total entries: 10
+Matched entries: 2
+Query time: 0.36 ms
+```
+
+**JSON output for programmatic use:**
+```bash
+./bklog query -file output.parquet -op list-groups -format json
+```
+
+**Query without statistics:**
+```bash
+./bklog query -file output.parquet -op list-groups -stats=false
+```
+
 ### CLI Options
+
+#### Parse Command
+```bash
+./bklog parse [options]
+```
 
 - `-file <path>`: Path to Buildkite log file (required)
 - `-json`: Output as JSON instead of text
@@ -255,6 +395,17 @@ This exports only command entries to a smaller Parquet file for analysis.
 - `-groups`: Show group/section information for each entry
 - `-parquet <path>`: Export to Parquet file (e.g., output.parquet)
 - `-use-seq2`: Use Go 1.23+ iter.Seq2 for iteration (experimental)
+
+#### Query Command
+```bash
+./bklog query [options]
+```
+
+- `-file <path>`: Path to Parquet log file (required)
+- `-op <operation>`: Query operation (`list-groups`, `by-group`)
+- `-group <pattern>`: Group name pattern to filter by (for `by-group` operation)
+- `-format <format>`: Output format (`text`, `json`)
+- `-stats`: Show query statistics (default: true)
 
 ## Log Entry Types
 
@@ -449,6 +600,72 @@ func (pw *ParquetWriter) WriteBatch(entries []*LogEntry) error
 func (pw *ParquetWriter) Close() error
 ```
 
+#### Parquet Query Functions
+```go
+// Create a new Parquet reader
+func NewParquetReader(filename string) *ParquetReader
+
+// Read all entries from a Parquet file
+func ReadParquetFile(filename string) ([]ParquetLogEntry, error)
+
+// Process entries into group information  
+func ListGroups(entries []ParquetLogEntry) []GroupInfo
+
+// Filter entries by group pattern (case-insensitive)
+func FilterByGroup(entries []ParquetLogEntry, groupPattern string) []ParquetLogEntry
+```
+
+#### ParquetReader Methods
+```go
+// Read all log entries from the Parquet file
+func (pr *ParquetReader) ReadEntries() ([]ParquetLogEntry, error)
+
+// List all groups with statistics
+func (pr *ParquetReader) ListGroups() ([]GroupInfo, error)
+
+// Filter entries by group pattern
+func (pr *ParquetReader) FilterByGroup(groupPattern string) ([]ParquetLogEntry, error)
+
+// Execute a complete query with timing stats
+func (pr *ParquetReader) Query(operation, groupPattern string) (*QueryResult, error)
+```
+
+#### Query Result Types
+```go
+type ParquetLogEntry struct {
+    Timestamp   int64  `json:"timestamp"`      // Unix timestamp in milliseconds
+    Content     string `json:"content"`        // Log content
+    Group       string `json:"group"`          // Associated group/section
+    HasTime     bool   `json:"has_timestamp"`  // Whether entry has timestamp
+    IsCommand   bool   `json:"is_command"`     // Whether entry is a command
+    IsGroup     bool   `json:"is_group"`       // Whether entry is a group header
+    IsProgress  bool   `json:"is_progress"`    // Whether entry is progress update
+    RawLineSize int32  `json:"raw_line_size"`  // Original line size in bytes
+}
+
+type GroupInfo struct {
+    Name       string    `json:"name"`          // Group/section name
+    EntryCount int       `json:"entry_count"`   // Number of entries in group
+    FirstSeen  time.Time `json:"first_seen"`    // Timestamp of first entry
+    LastSeen   time.Time `json:"last_seen"`     // Timestamp of last entry
+    Commands   int       `json:"commands"`      // Number of command entries
+    Progress   int       `json:"progress"`      // Number of progress entries
+}
+
+type QueryResult struct {
+    Groups  []GroupInfo       `json:"groups,omitempty"`   // Group results (list-groups)
+    Entries []ParquetLogEntry `json:"entries,omitempty"`  // Entry results (by-group)
+    Stats   QueryStats        `json:"stats,omitempty"`    // Performance statistics
+}
+
+type QueryStats struct {
+    TotalEntries   int     `json:"total_entries"`   // Total entries in file
+    MatchedEntries int     `json:"matched_entries"` // Entries matching query
+    TotalGroups    int     `json:"total_groups"`    // Total groups found
+    QueryTime      float64 `json:"query_time_ms"`   // Query execution time (ms)
+}
+```
+
 ## Performance
 
 ### Benchmarks
@@ -492,6 +709,19 @@ go test -bench=. -benchmem
 - **IsProgress()**: ~64,000 ops/sec, 9.5 KB allocated
 - **CleanContent()**: ~15,000 ops/sec, 84 KB allocated
 
+**Parquet Query Performance (Apache Arrow Go v18, 10 entries):**
+- **ReadEntries**: ~175μs, 370 KB allocated, 1,626 allocs/op
+- **ListGroups**: ~173μs, 370 KB allocated, 1,635 allocs/op  
+- **FilterByGroup**: ~175μs, 370 KB allocated, 1,638 allocs/op
+- **Complete Query**: ~174μs, 371 KB allocated, 1,636 allocs/op
+- **Throughput**: ~5,700 operations/sec
+
+**Query Scalability (in-memory processing):**
+- **ListGroups (1,000 entries)**: ~13.5μs, 1.7 KB allocated, 12 allocs/op
+- **FilterByGroup (1,000 entries)**: ~77μs, 100 KB allocated, 1,010 allocs/op
+- **ListGroups (10,000 entries)**: ~127μs, 1.7 KB allocated, 12 allocs/op
+- **FilterByGroup (10,000 entries)**: ~805μs, 1.0 MB allocated, 10,015 allocs/op
+
 ### Performance Improvements
 
 **Byte-based Parser vs Regex:**
@@ -526,6 +756,10 @@ The tests cover:
 - Stream processing
 - Iterator functionality
 - Memory usage patterns
+
+## Acknowledgments
+
+This library was developed with assistance from Claude (Anthropic) for parsing, query functionality, and performance optimization.
 
 ## License
 

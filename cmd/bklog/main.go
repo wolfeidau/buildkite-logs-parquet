@@ -136,14 +136,7 @@ func handleQueryCommand() {
 	}
 }
 
-func runQuery(config *QueryConfig) error {
-	result, err := executeQuery(*config)
-	if err != nil {
-		return err
-	}
-
-	return formatQueryResult(result, *config)
-}
+// runQuery is now implemented in query_cli.go using the library package
 
 func runParse(config *Config) error {
 	file, err := os.Open(config.FilePath)
