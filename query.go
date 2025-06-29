@@ -133,7 +133,11 @@ func readParquetFile(filename string) ([]ParquetLogEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer osFile.Close()
+	defer func() {
+		if closeErr := osFile.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
+		}
+	}()
 
 	// Get file info for size (not currently used but may be needed for optimization)
 	_, err = osFile.Stat()
@@ -149,7 +153,11 @@ func readParquetFile(filename string) ([]ParquetLogEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open parquet file: %w", err)
 	}
-	defer pf.Close()
+	defer func() {
+		if closeErr := pf.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close parquet reader: %v\n", closeErr)
+		}
+	}()
 
 	// Create an Arrow file reader
 	ctx := context.Background()
@@ -179,7 +187,7 @@ func convertTableToEntries(table arrow.Table) ([]ParquetLogEntry, error) {
 	schema := table.Schema()
 	
 	// Find column indices
-	var timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx int = -1, -1, -1, -1, -1, -1, -1, -1
+	var timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx = -1, -1, -1, -1, -1, -1, -1, -1
 	
 	for i, field := range schema.Fields() {
 		switch field.Name {

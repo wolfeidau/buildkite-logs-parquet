@@ -37,7 +37,10 @@ func TestParquetExport(t *testing.T) {
 	}
 
 	// Cleanup
-	defer os.Remove(filename)
+	defer func() {
+		// It's okay if the file doesn't exist or can't be removed in tests
+		_ = os.Remove(filename)
+	}()
 
 	// Check file is not empty
 	info, err := os.Stat(filename)
@@ -73,7 +76,10 @@ func TestParquetIteratorExport(t *testing.T) {
 	}
 
 	// Cleanup
-	defer os.Remove(filename)
+	defer func() {
+		// It's okay if the file doesn't exist or can't be removed in tests
+		_ = os.Remove(filename)
+	}()
 
 	// Check file is not empty
 	info, err := os.Stat(filename)
@@ -93,11 +99,18 @@ func TestParquetWriter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create file: %v", err)
 	}
-	defer os.Remove(filename)
+	defer func() {
+		// It's okay if the file doesn't exist or can't be removed in tests
+		_ = os.Remove(filename)
+	}()
 
 	// Create writer
 	writer := NewParquetWriter(file)
-	defer writer.Close()
+	defer func() {
+		if err := writer.Close(); err != nil {
+			t.Logf("Warning: failed to close writer: %v", err)
+		}
+	}()
 
 	// Create test entries
 	entries := []*LogEntry{
@@ -116,8 +129,12 @@ func TestParquetWriter(t *testing.T) {
 	}
 
 	// Close writer and file
-	writer.Close()
-	file.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close writer: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("Failed to close file: %v", err)
+	}
 
 	// Check file was written
 	info, err := os.Stat(filename)
@@ -152,7 +169,10 @@ func TestParquetSeq2Export(t *testing.T) {
 	}
 
 	// Cleanup
-	defer os.Remove(filename)
+	defer func() {
+		// It's okay if the file doesn't exist or can't be removed in tests
+		_ = os.Remove(filename)
+	}()
 
 	// Check file is not empty
 	info, err := os.Stat(filename)
@@ -193,7 +213,10 @@ func TestParquetSeq2ExportWithFilter(t *testing.T) {
 	}
 
 	// Cleanup
-	defer os.Remove(filename)
+	defer func() {
+		// It's okay if the file doesn't exist or can't be removed in tests
+		_ = os.Remove(filename)
+	}()
 
 	// Check file is not empty (should contain 2 command entries)
 	info, err := os.Stat(filename)

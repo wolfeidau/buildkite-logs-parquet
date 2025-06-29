@@ -86,7 +86,9 @@ func handleParseCommand() {
 		fmt.Printf("  %s parse -file buildkite.log -parquet output.parquet -summary\n", os.Args[0])
 	}
 
-	parseFlags.Parse(os.Args[2:])
+	if err := parseFlags.Parse(os.Args[2:]); err != nil {
+		os.Exit(1)
+	}
 
 	if config.FilePath == "" {
 		parseFlags.Usage()
@@ -123,7 +125,9 @@ func handleQueryCommand() {
 		fmt.Printf("  %s query -file logs.parquet -op list-groups -format json\n", os.Args[0])
 	}
 
-	queryFlags.Parse(os.Args[2:])
+	if err := queryFlags.Parse(os.Args[2:]); err != nil {
+		os.Exit(1)
+	}
 
 	if config.ParquetFile == "" {
 		queryFlags.Usage()
@@ -143,7 +147,11 @@ func runParse(config *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
+		}
+	}()
 
 	// Get file size for bytes processed calculation
 	fileInfo, err := file.Stat()
@@ -193,7 +201,9 @@ func runParse(config *Config) error {
 
 func outputSeq2(file *os.File, parser *buildkitelogs.Parser, outputJSON bool, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
 	// Reset file position
-	file.Seek(0, 0)
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to reset file position: %w", err)
+	}
 
 	if outputJSON {
 		return outputJSONSeq2(file, parser, filter, stripANSI, showGroups, summary)
@@ -497,7 +507,11 @@ func exportToParquetSeq2(file *os.File, parser *buildkitelogs.Parser, filename s
 	// Create a sequence that counts entries for summary and handles errors
 	countingSeq := func(yield func(*buildkitelogs.LogEntry, error) bool) {
 		// Reset file position to beginning
-		file.Seek(0, 0)
+		if _, err := file.Seek(0, 0); err != nil {
+			// Yield the error to the caller
+			yield(nil, fmt.Errorf("failed to reset file position: %w", err))
+			return
+		}
 
 		lineNum := 0
 		for entry, err := range parser.All(file) {

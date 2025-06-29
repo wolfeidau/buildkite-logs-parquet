@@ -355,7 +355,7 @@ func BenchmarkParquetExport(b *testing.B) {
 				}
 				
 				// Cleanup
-				os.Remove(filename)
+				_ = os.Remove(filename) // Ignore error in benchmark cleanup
 			}
 		})
 	}
@@ -382,7 +382,7 @@ func BenchmarkParquetIteratorExport(b *testing.B) {
 				}
 				
 				// Cleanup
-				os.Remove(filename)
+				_ = os.Remove(filename) // Ignore error in benchmark cleanup
 			}
 		})
 	}
@@ -408,7 +408,7 @@ func BenchmarkParquetSeq2Export(b *testing.B) {
 				}
 				
 				// Cleanup
-				os.Remove(filename)
+				_ = os.Remove(filename) // Ignore error in benchmark cleanup
 			}
 		})
 	}
@@ -436,7 +436,7 @@ func BenchmarkParquetExportComparison(b *testing.B) {
 				b.Fatal(err)
 			}
 			
-			os.Remove(filename)
+			_ = os.Remove(filename) // Ignore error in benchmark cleanup
 		}
 	})
 	
@@ -452,7 +452,7 @@ func BenchmarkParquetExportComparison(b *testing.B) {
 				b.Fatal(err)
 			}
 			
-			os.Remove(filename)
+			_ = os.Remove(filename) // Ignore error in benchmark cleanup
 		}
 	})
 	
@@ -467,7 +467,7 @@ func BenchmarkParquetExportComparison(b *testing.B) {
 				b.Fatal(err)
 			}
 			
-			os.Remove(filename)
+			_ = os.Remove(filename) // Ignore error in benchmark cleanup
 		}
 	})
 }
@@ -492,7 +492,7 @@ func BenchmarkParquetWithFiltering(b *testing.B) {
 				b.Fatal(err)
 			}
 			
-			os.Remove(filename)
+			_ = os.Remove(filename) // Ignore error in benchmark cleanup
 		}
 	})
 }
