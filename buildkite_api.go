@@ -4,22 +4,27 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 	"strings"
 	"time"
 )
 
 // BuildkiteAPIClient provides methods to interact with the Buildkite API
 type BuildkiteAPIClient struct {
-	apiToken string
-	baseURL  string
-	client   *http.Client
+	apiToken  string
+	baseURL   string
+	userAgent string
+	client    *http.Client
 }
 
 // NewBuildkiteAPIClient creates a new Buildkite API client
-func NewBuildkiteAPIClient(apiToken string) *BuildkiteAPIClient {
+func NewBuildkiteAPIClient(apiToken, version string) *BuildkiteAPIClient {
+	userAgent := fmt.Sprintf("buildkite-logs-parquet/%s (Go; %s; %s)", version, runtime.GOOS, runtime.GOARCH)
+
 	return &BuildkiteAPIClient{
-		apiToken: apiToken,
-		baseURL:  "https://api.buildkite.com/v2",
+		apiToken:  apiToken,
+		baseURL:   "https://api.buildkite.com/v2",
+		userAgent: userAgent,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -28,7 +33,7 @@ func NewBuildkiteAPIClient(apiToken string) *BuildkiteAPIClient {
 
 // GetJobLog fetches the log output for a specific job
 // org: organization slug
-// pipeline: pipeline slug  
+// pipeline: pipeline slug
 // build: build number or UUID
 // job: job ID
 func (c *BuildkiteAPIClient) GetJobLog(org, pipeline, build, job string) (io.ReadCloser, error) {
@@ -36,7 +41,7 @@ func (c *BuildkiteAPIClient) GetJobLog(org, pipeline, build, job string) (io.Rea
 		return nil, fmt.Errorf("API token is required")
 	}
 
-	url := fmt.Sprintf("%s/organizations/%s/pipelines/%s/builds/%s/jobs/%s/log", 
+	url := fmt.Sprintf("%s/organizations/%s/pipelines/%s/builds/%s/jobs/%s/log",
 		c.baseURL, org, pipeline, build, job)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -44,9 +49,10 @@ func (c *BuildkiteAPIClient) GetJobLog(org, pipeline, build, job string) (io.Rea
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set authorization header
+	// Set headers
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	req.Header.Set("Accept", "text/plain")
+	req.Header.Set("User-Agent", c.userAgent)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -64,7 +70,7 @@ func (c *BuildkiteAPIClient) GetJobLog(org, pipeline, build, job string) (io.Rea
 // ValidateAPIParams validates that all required API parameters are provided
 func ValidateAPIParams(org, pipeline, build, job string) error {
 	var missing []string
-	
+
 	if org == "" {
 		missing = append(missing, "organization")
 	}
@@ -77,10 +83,10 @@ func ValidateAPIParams(org, pipeline, build, job string) error {
 	if job == "" {
 		missing = append(missing, "job")
 	}
-	
+
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required API parameters: %s", strings.Join(missing, ", "))
 	}
-	
+
 	return nil
 }

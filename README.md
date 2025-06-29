@@ -256,6 +256,20 @@ for _, entry := range entries {
 go build -o bklog ./cmd/bklog
 ```
 
+**Build with version information:**
+```bash
+go build -ldflags "-X main.version=v1.2.3" -o bklog ./cmd/bklog
+```
+
+**Check version:**
+```bash
+./bklog version
+# or
+./bklog -v
+# or  
+./bklog --version
+```
+
 ### Examples
 
 #### Local File Processing

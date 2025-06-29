@@ -10,6 +10,10 @@ import (
 	buildkitelogs "github.com/wolfeidau/buildkite-logs-parquet"
 )
 
+// version can be overridden at build time using:
+// go build -ldflags "-X main.version=v1.2.3" ./cmd/bklog
+var version = "dev"
+
 type Config struct {
 	FilePath    string
 	OutputJSON  bool
@@ -49,6 +53,9 @@ func main() {
 		handleParseCommand()
 	case "query":
 		handleQueryCommand()
+	case "version", "-v", "--version":
+		fmt.Printf("bklog version %s\n", version)
+		return
 	case "help", "-h", "--help":
 		printUsage()
 	default:
@@ -61,9 +68,10 @@ func main() {
 func printUsage() {
 	fmt.Printf("Usage: %s <subcommand> [options]\n\n", os.Args[0])
 	fmt.Println("Subcommands:")
-	fmt.Println("  parse   Parse Buildkite log files and export to various formats")
-	fmt.Println("  query   Query Parquet log files")
-	fmt.Println("  help    Show this help message")
+	fmt.Println("  parse     Parse Buildkite log files and export to various formats")
+	fmt.Println("  query     Query Parquet log files")
+	fmt.Println("  version   Show version information")
+	fmt.Println("  help      Show this help message")
 	fmt.Println("")
 	fmt.Printf("Use '%s <subcommand> -h' for subcommand-specific help", os.Args[0])
 }
@@ -208,7 +216,7 @@ func runParse(config *Config) error {
 			return fmt.Errorf("BUILDKITE_API_TOKEN environment variable is required for API access")
 		}
 		
-		client := buildkitelogs.NewBuildkiteAPIClient(apiToken)
+		client := buildkitelogs.NewBuildkiteAPIClient(apiToken, version)
 		logReader, err := client.GetJobLog(config.Organization, config.Pipeline, config.Build, config.Job)
 		if err != nil {
 			return fmt.Errorf("failed to fetch logs from API: %w", err)
