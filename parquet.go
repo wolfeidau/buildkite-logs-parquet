@@ -8,6 +8,8 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/apache/arrow-go/v18/parquet"
+	"github.com/apache/arrow-go/v18/parquet/compress"
 	"github.com/apache/arrow-go/v18/parquet/pqarrow"
 )
 
@@ -127,7 +129,16 @@ func ExportToParquet(entries []*LogEntry, filename string) error {
 	defer record.Release()
 
 	// Create Parquet writer
-	writer, err := pqarrow.NewFileWriter(record.Schema(), file, nil, pqarrow.DefaultWriterProps())
+	writer, err := pqarrow.NewFileWriter(record.Schema(), file,
+		parquet.NewWriterProperties(
+			parquet.WithCompression(compress.Codecs.Snappy),
+			parquet.WithStats(true),
+		),
+		pqarrow.NewArrowWriterProperties(
+			pqarrow.WithAllocator(pool),
+			pqarrow.WithCoerceTimestamps(arrow.Millisecond),
+		),
+	)
 	if err != nil {
 		return err
 	}

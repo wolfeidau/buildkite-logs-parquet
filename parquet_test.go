@@ -18,7 +18,7 @@ func TestParquetExport(t *testing.T) {
 		},
 		{
 			Timestamp: time.Unix(0, 1745322209922*int64(time.Millisecond)),
-			Content:   "$ /buildkite/agent/hooks/environment", 
+			Content:   "$ /buildkite/agent/hooks/environment",
 			RawLine:   []byte("\\x1b_bk;t=1745322209922\\x07$ /buildkite/agent/hooks/environment"),
 			Group:     "~~~ Running global environment hook",
 		},
@@ -47,7 +47,7 @@ func TestParquetExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to stat parquet file: %v", err)
 	}
-	
+
 	if info.Size() == 0 {
 		t.Error("Parquet file is empty")
 	}
@@ -86,7 +86,7 @@ func TestParquetIteratorExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to stat parquet file: %v", err)
 	}
-	
+
 	if info.Size() == 0 {
 		t.Error("Parquet file is empty")
 	}
@@ -141,7 +141,7 @@ func TestParquetWriter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to stat parquet file: %v", err)
 	}
-	
+
 	if info.Size() == 0 {
 		t.Error("Parquet file is empty")
 	}
@@ -149,13 +149,13 @@ func TestParquetWriter(t *testing.T) {
 
 func TestParquetSeq2Export(t *testing.T) {
 	parser := NewParser()
-	
+
 	testData := "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook\n" +
 		"\x1b_bk;t=1745322209922\x07$ /buildkite/agent/hooks/environment\n" +
 		"\x1b_bk;t=1745322209923\x07Some regular output"
 
 	reader := strings.NewReader(testData)
-	
+
 	// Export using Seq2
 	filename := "test_seq2_output.parquet"
 	err := ExportSeq2ToParquet(parser.All(reader), filename)
@@ -179,7 +179,7 @@ func TestParquetSeq2Export(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to stat parquet file: %v", err)
 	}
-	
+
 	if info.Size() == 0 {
 		t.Error("Parquet file is empty")
 	}
@@ -187,19 +187,19 @@ func TestParquetSeq2Export(t *testing.T) {
 
 func TestParquetSeq2ExportWithFilter(t *testing.T) {
 	parser := NewParser()
-	
+
 	testData := "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook\n" +
 		"\x1b_bk;t=1745322209922\x07$ /buildkite/agent/hooks/environment\n" +
 		"\x1b_bk;t=1745322209923\x07Some regular output\n" +
 		"\x1b_bk;t=1745322209924\x07$ git clone repo"
 
 	reader := strings.NewReader(testData)
-	
+
 	// Filter for commands only
 	filterFunc := func(entry *LogEntry) bool {
 		return entry.IsCommand()
 	}
-	
+
 	// Export using Seq2 with filter
 	filename := "test_seq2_filtered.parquet"
 	err := ExportSeq2ToParquetWithFilter(parser.All(reader), filename, filterFunc)
@@ -223,7 +223,7 @@ func TestParquetSeq2ExportWithFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to stat parquet file: %v", err)
 	}
-	
+
 	if info.Size() == 0 {
 		t.Error("Parquet file is empty")
 	}

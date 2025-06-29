@@ -7,7 +7,7 @@ import (
 )
 
 func TestParquetReader(t *testing.T) {
-	testFile := "test_logs.parquet"
+	testFile := "testdata/bash-example.parquet"
 	if _, err := os.Stat(testFile); os.IsNotExist(err) {
 		t.Skip("test_logs.parquet not found - run parse command first to generate test data")
 	}
@@ -254,11 +254,11 @@ func TestReadParquetFileNotFound(t *testing.T) {
 
 // Helper function for case-insensitive string contains check
 func containsIgnoreCase(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		   len(substr) > 0 && 
-		   (s == substr || 
-		    (len(s) > len(substr) && 
-		     (stringContains(toLowerCase(s), toLowerCase(substr)))))
+	return len(s) >= len(substr) &&
+		len(substr) > 0 &&
+		(s == substr ||
+			(len(s) > len(substr) &&
+				(stringContains(toLowerCase(s), toLowerCase(substr)))))
 }
 
 func toLowerCase(s string) string {
@@ -284,7 +284,7 @@ func indexOf(s, substr string) int {
 	if len(s) < len(substr) {
 		return -1
 	}
-	
+
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
 			return i
