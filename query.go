@@ -90,7 +90,7 @@ func (pr *ParquetReader) FilterByGroup(groupPattern string) ([]ParquetLogEntry, 
 // Query performs a complete query operation and returns formatted results
 func (pr *ParquetReader) Query(operation, groupPattern string) (*QueryResult, error) {
 	start := time.Now()
-	
+
 	entries, err := pr.ReadEntries()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Parquet file: %w", err)
@@ -133,11 +133,7 @@ func readParquetFile(filename string) ([]ParquetLogEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer func() {
-		if closeErr := osFile.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = osFile.Close() }()
 
 	// Get file info for size (not currently used but may be needed for optimization)
 	_, err = osFile.Stat()
@@ -153,11 +149,7 @@ func readParquetFile(filename string) ([]ParquetLogEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open parquet file: %w", err)
 	}
-	defer func() {
-		if closeErr := pf.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close parquet reader: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = pf.Close() }()
 
 	// Create an Arrow file reader
 	ctx := context.Background()
@@ -185,10 +177,10 @@ func readParquetFile(filename string) ([]ParquetLogEntry, error) {
 // convertTableToEntries converts an Arrow table to ParquetLogEntry slice
 func convertTableToEntries(table arrow.Table) ([]ParquetLogEntry, error) {
 	schema := table.Schema()
-	
+
 	// Find column indices
 	var timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx = -1, -1, -1, -1, -1, -1, -1, -1
-	
+
 	for i, field := range schema.Fields() {
 		switch field.Name {
 		case "timestamp":
@@ -209,17 +201,17 @@ func convertTableToEntries(table arrow.Table) ([]ParquetLogEntry, error) {
 			rawSizeIdx = i
 		}
 	}
-	
+
 	if timestampIdx == -1 || contentIdx == -1 {
 		return nil, fmt.Errorf("required columns 'timestamp' and 'content' not found")
 	}
-	
+
 	var entries []ParquetLogEntry
-	
+
 	// Create a table reader to iterate through records
 	tr := array.NewTableReader(table, 1000) // 1000 rows per batch
 	defer tr.Release()
-	
+
 	for tr.Next() {
 		record := tr.Record()
 		batchEntries, err := convertRecordToEntries(record, timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx)
@@ -228,23 +220,23 @@ func convertTableToEntries(table arrow.Table) ([]ParquetLogEntry, error) {
 		}
 		entries = append(entries, batchEntries...)
 	}
-	
+
 	if err := tr.Err(); err != nil {
 		return nil, fmt.Errorf("error reading table: %w", err)
 	}
-	
+
 	return entries, nil
 }
 
-// convertRecordToEntries converts an Arrow record to ParquetLogEntry slice  
+// convertRecordToEntries converts an Arrow record to ParquetLogEntry slice
 func convertRecordToEntries(record arrow.Record, timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx int) ([]ParquetLogEntry, error) {
 	numRows := int(record.NumRows())
 	entries := make([]ParquetLogEntry, numRows)
-	
+
 	// Get column arrays
 	timestampCol := record.Column(timestampIdx)
 	contentCol := record.Column(contentIdx)
-	
+
 	var groupCol, hasTimeCol, isCmdCol, isGroupCol, isProgCol, rawSizeCol arrow.Array
 	if groupIdx >= 0 {
 		groupCol = record.Column(groupIdx)
@@ -264,11 +256,11 @@ func convertRecordToEntries(record arrow.Record, timestampIdx, contentIdx, group
 	if rawSizeIdx >= 0 {
 		rawSizeCol = record.Column(rawSizeIdx)
 	}
-	
+
 	// Convert each row
 	for i := 0; i < numRows; i++ {
 		entry := ParquetLogEntry{}
-		
+
 		// Timestamp (required)
 		if timestampCol.IsNull(i) {
 			entry.Timestamp = 0
@@ -280,7 +272,7 @@ func convertRecordToEntries(record arrow.Record, timestampIdx, contentIdx, group
 				return nil, fmt.Errorf("unexpected timestamp column type: %T", timestampCol)
 			}
 		}
-		
+
 		// Content (required)
 		if contentCol.IsNull(i) {
 			entry.Content = ""
@@ -294,7 +286,7 @@ func convertRecordToEntries(record arrow.Record, timestampIdx, contentIdx, group
 				return nil, fmt.Errorf("unexpected content column type: %T", contentCol)
 			}
 		}
-		
+
 		// Group (optional)
 		if groupCol != nil && !groupCol.IsNull(i) {
 			switch group := groupCol.(type) {
@@ -304,7 +296,7 @@ func convertRecordToEntries(record arrow.Record, timestampIdx, contentIdx, group
 				entry.Group = string(group.Value(i))
 			}
 		}
-		
+
 		// Boolean fields (optional)
 		if hasTimeCol != nil && !hasTimeCol.IsNull(i) {
 			if boolCol, ok := hasTimeCol.(*array.Boolean); ok {
@@ -326,7 +318,7 @@ func convertRecordToEntries(record arrow.Record, timestampIdx, contentIdx, group
 				entry.IsProgress = boolCol.Value(i)
 			}
 		}
-		
+
 		// Raw size (optional)
 		if rawSizeCol != nil && !rawSizeCol.IsNull(i) {
 			switch size := rawSizeCol.(type) {
@@ -334,10 +326,10 @@ func convertRecordToEntries(record arrow.Record, timestampIdx, contentIdx, group
 				entry.RawLineSize = size.Value(i)
 			}
 		}
-		
+
 		entries[i] = entry
 	}
-	
+
 	return entries, nil
 }
 
@@ -362,7 +354,7 @@ func ListGroups(entries []ParquetLogEntry) []GroupInfo {
 		}
 
 		info.EntryCount++
-		
+
 		entryTime := time.Unix(0, entry.Timestamp*int64(time.Millisecond))
 		if entryTime.Before(info.FirstSeen) {
 			info.FirstSeen = entryTime
@@ -395,18 +387,18 @@ func ListGroups(entries []ParquetLogEntry) []GroupInfo {
 // FilterByGroup returns entries that belong to groups matching the specified pattern
 func FilterByGroup(entries []ParquetLogEntry, groupPattern string) []ParquetLogEntry {
 	var filtered []ParquetLogEntry
-	
+
 	for _, entry := range entries {
 		entryGroup := entry.Group
 		if entryGroup == "" {
 			entryGroup = "<no group>"
 		}
-		
+
 		if strings.Contains(strings.ToLower(entryGroup), strings.ToLower(groupPattern)) {
 			filtered = append(filtered, entry)
 		}
 	}
-	
+
 	return filtered
 }
 

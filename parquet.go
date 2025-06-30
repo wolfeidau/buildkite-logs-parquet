@@ -112,11 +112,7 @@ func ExportToParquet(entries []*LogEntry, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = file.Close() }()
 
 	// Create memory allocator
 	pool := memory.NewGoAllocator()
@@ -131,8 +127,12 @@ func ExportToParquet(entries []*LogEntry, filename string) error {
 	// Create Parquet writer
 	writer, err := pqarrow.NewFileWriter(record.Schema(), file,
 		parquet.NewWriterProperties(
-			parquet.WithCompression(compress.Codecs.Snappy),
-			parquet.WithStats(true),
+			parquet.WithCompression(compress.Codecs.Zstd),
+			parquet.WithCompressionLevel(3),
+			parquet.WithSortingColumns([]parquet.SortingColumn{
+				{ColumnIdx: 0, Descending: false, NullsFirst: true}, // Timestamp
+				{ColumnIdx: 2, Descending: false, NullsFirst: true}, // Group
+			}),
 		),
 		pqarrow.NewArrowWriterProperties(
 			pqarrow.WithAllocator(pool),
@@ -142,11 +142,7 @@ func ExportToParquet(entries []*LogEntry, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := writer.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close writer: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = writer.Close() }()
 
 	// Write the record
 	err = writer.Write(record)
@@ -210,22 +206,14 @@ func ExportIteratorToParquet(iterator *LogIterator, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = file.Close() }()
 
 	// Create writer
 	writer := NewParquetWriter(file)
 	if writer == nil {
 		return fmt.Errorf("failed to create Parquet writer")
 	}
-	defer func() {
-		if closeErr := writer.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close writer: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = writer.Close() }()
 
 	// Process entries in batches for memory efficiency
 	const batchSize = 1000
@@ -264,22 +252,14 @@ func ExportSeq2ToParquet(seq iter.Seq2[*LogEntry, error], filename string) error
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = file.Close() }()
 
 	// Create writer
 	writer := NewParquetWriter(file)
 	if writer == nil {
 		return fmt.Errorf("failed to create Parquet writer")
 	}
-	defer func() {
-		if closeErr := writer.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close writer: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = writer.Close() }()
 
 	// Process entries in batches for memory efficiency
 	const batchSize = 1000
@@ -321,22 +301,14 @@ func ExportSeq2ToParquetWithFilter(seq iter.Seq2[*LogEntry, error], filename str
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close file: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = file.Close() }()
 
 	// Create writer
 	writer := NewParquetWriter(file)
 	if writer == nil {
 		return fmt.Errorf("failed to create Parquet writer")
 	}
-	defer func() {
-		if closeErr := writer.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close writer: %v\n", closeErr)
-		}
-	}()
+	defer func() { _ = writer.Close() }()
 
 	// Process entries in batches for memory efficiency
 	const batchSize = 1000
