@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// TestRealWorldPerformance tests performance with actual parquet files
-func TestRealWorldPerformance(t *testing.T) {
+// TestRealWorldStreamingPerformance tests streaming performance with actual parquet files
+func TestRealWorldStreamingPerformance(t *testing.T) {
 	testFiles := []struct {
 		name string
 		path string
@@ -26,17 +26,8 @@ func TestRealWorldPerformance(t *testing.T) {
 
 			reader := NewParquetReader(tf.path)
 
-			// Test array approach
+			// Test streaming iterator performance
 			start := time.Now()
-			entries, err := reader.ReadEntries()
-			if err != nil {
-				t.Fatalf("ReadEntries failed: %v", err)
-			}
-			arrayTime := time.Since(start)
-			arrayCount := len(entries)
-
-			// Test iterator approach
-			start = time.Now()
 			iterCount := 0
 			for entry, err := range reader.ReadEntriesIter() {
 				if err != nil {
@@ -47,21 +38,34 @@ func TestRealWorldPerformance(t *testing.T) {
 			}
 			iterTime := time.Since(start)
 
+			// Test early termination performance
+			start = time.Now()
+			earlyCount := 0
+			for entry, err := range reader.ReadEntriesIter() {
+				if err != nil {
+					t.Fatalf("ReadEntriesIter failed: %v", err)
+				}
+				earlyCount++
+				_ = entry
+				if earlyCount >= 1000 {
+					break
+				}
+			}
+			earlyTime := time.Since(start)
+
 			// Report results
 			t.Logf("File: %s", tf.name)
-			t.Logf("Array approach: %d entries in %v", arrayCount, arrayTime)
-			t.Logf("Iterator approach: %d entries in %v", iterCount, iterTime)
-			t.Logf("Performance ratio: %.2fx", float64(arrayTime)/float64(iterTime))
-
-			if arrayCount != iterCount {
-				t.Errorf("Entry count mismatch: array=%d, iterator=%d", arrayCount, iterCount)
+			t.Logf("Full streaming: %d entries in %v", iterCount, iterTime)
+			t.Logf("Early termination: %d entries in %v", earlyCount, earlyTime)
+			if iterCount > 1000 {
+				t.Logf("Early termination speedup: %.2fx", float64(iterTime)/float64(earlyTime))
 			}
 		})
 	}
 }
 
-// BenchmarkRealWorldFiles benchmarks with actual parquet files
-func BenchmarkRealWorldFiles(b *testing.B) {
+// BenchmarkStreamingFiles benchmarks streaming with actual parquet files
+func BenchmarkStreamingFiles(b *testing.B) {
 	testFiles := []struct {
 		name string
 		path string
@@ -76,20 +80,7 @@ func BenchmarkRealWorldFiles(b *testing.B) {
 
 		reader := NewParquetReader(tf.path)
 
-		b.Run(fmt.Sprintf("%s_Array", tf.name), func(b *testing.B) {
-			b.ResetTimer()
-			b.ReportAllocs()
-
-			for i := 0; i < b.N; i++ {
-				entries, err := reader.ReadEntries()
-				if err != nil {
-					b.Fatalf("ReadEntries failed: %v", err)
-				}
-				_ = entries
-			}
-		})
-
-		b.Run(fmt.Sprintf("%s_Iterator", tf.name), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%s_StreamingFull", tf.name), func(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 
@@ -105,28 +96,43 @@ func BenchmarkRealWorldFiles(b *testing.B) {
 			}
 		})
 
-		// Test early termination advantage
-		b.Run(fmt.Sprintf("%s_EarlyTermination_Array", tf.name), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%s_StreamingGroupAnalysis", tf.name), func(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				entries, err := reader.ReadEntries()
-				if err != nil {
-					b.Fatalf("ReadEntries failed: %v", err)
-				}
-
-				// Process only first 1000 entries
-				for j, entry := range entries {
-					if j >= 1000 {
-						break
+				groupMap := make(map[string]*GroupInfo)
+				for entry, err := range reader.ReadEntriesIter() {
+					if err != nil {
+						b.Fatalf("ReadEntriesIter failed: %v", err)
 					}
-					_ = entry.Content
+
+					groupName := entry.Group
+					if groupName == "" {
+						groupName = "<no group>"
+					}
+
+					info, exists := groupMap[groupName]
+					if !exists {
+						entryTime := time.Unix(0, entry.Timestamp*int64(time.Millisecond))
+						info = &GroupInfo{
+							Name:      groupName,
+							FirstSeen: entryTime,
+							LastSeen:  entryTime,
+						}
+						groupMap[groupName] = info
+					}
+
+					info.EntryCount++
+					if entry.IsCommand {
+						info.Commands++
+					}
 				}
+				_ = groupMap
 			}
 		})
 
-		b.Run(fmt.Sprintf("%s_EarlyTermination_Iterator", tf.name), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%s_EarlyTermination", tf.name), func(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 
@@ -140,7 +146,26 @@ func BenchmarkRealWorldFiles(b *testing.B) {
 					_ = entry.Content
 					count++
 					if count >= 1000 {
-						break
+						break // Early termination advantage
+					}
+				}
+			}
+		})
+
+		b.Run(fmt.Sprintf("%s_FilteredStreaming", tf.name), func(b *testing.B) {
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				count := 0
+				for entry, err := range reader.FilterByGroupIter("test") {
+					if err != nil {
+						b.Fatalf("FilterByGroupIter failed: %v", err)
+					}
+					count++
+					_ = entry
+					if count >= 100 {
+						break // Early termination
 					}
 				}
 			}

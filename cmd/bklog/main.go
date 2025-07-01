@@ -22,7 +22,6 @@ type Config struct {
 	ShowSummary bool
 	ShowGroups  bool
 	ParquetFile string
-	UseSeq2     bool
 	// Buildkite API parameters
 	Organization string
 	Pipeline     string
@@ -87,7 +86,6 @@ func handleParseCommand() {
 	parseFlags.BoolVar(&config.ShowSummary, "summary", false, "Show processing summary at the end")
 	parseFlags.BoolVar(&config.ShowGroups, "groups", false, "Show group/section information")
 	parseFlags.StringVar(&config.ParquetFile, "parquet", "", "Export to Parquet file (e.g., output.parquet)")
-	parseFlags.BoolVar(&config.UseSeq2, "use-seq2", false, "Use Go 1.23+ iter.Seq2 for iteration (experimental)")
 	// Buildkite API parameters
 	parseFlags.StringVar(&config.Organization, "org", "", "Buildkite organization slug (for API)")
 	parseFlags.StringVar(&config.Pipeline, "pipeline", "", "Buildkite pipeline slug (for API)")
@@ -157,7 +155,6 @@ func handleQueryCommand() {
 	queryFlags.StringVar(&config.GroupName, "group", "", "Group name to filter by (for by-group operation)")
 	queryFlags.StringVar(&config.Format, "format", "text", "Output format: text, json")
 	queryFlags.BoolVar(&config.ShowStats, "stats", true, "Show query statistics")
-	queryFlags.BoolVar(&config.UseStreaming, "streaming", true, "Use streaming iterators for better memory efficiency")
 	queryFlags.IntVar(&config.LimitEntries, "limit", 0, "Limit number of entries returned (0 = no limit, enables early termination)")
 
 	queryFlags.Usage = func() {
@@ -173,7 +170,6 @@ func handleQueryCommand() {
 		fmt.Printf("  %s query -file logs.parquet -op by-group -group \"Running tests\"\n", os.Args[0])
 		fmt.Printf("  %s query -file logs.parquet -op list-groups -format json\n", os.Args[0])
 		fmt.Printf("  %s query -file logs.parquet -op by-group -group \"test\" -limit 100\n", os.Args[0])
-		fmt.Printf("  %s query -file logs.parquet -op list-groups -streaming=false\n", os.Args[0])
 	}
 
 	if err := queryFlags.Parse(os.Args[2:]); err != nil {
@@ -243,37 +239,15 @@ func runParse(config *Config) error {
 
 	// Handle Parquet export if specified
 	if config.ParquetFile != "" {
-		if config.UseSeq2 {
-			err := exportToParquetSeq2(reader, parser, config.ParquetFile, config.Filter, summary)
-			if err != nil {
-				return fmt.Errorf("failed to export to Parquet: %w", err)
-			}
-		} else {
-			err := exportToParquet(reader, parser, config.ParquetFile, config.Filter, summary)
-			if err != nil {
-				return fmt.Errorf("failed to export to Parquet: %w", err)
-			}
+		err := exportToParquetSeq2(reader, parser, config.ParquetFile, config.Filter, summary)
+		if err != nil {
+			return fmt.Errorf("failed to export to Parquet: %w", err)
 		}
 	} else {
 		// Regular output processing
-		if config.UseSeq2 {
-			err := outputSeq2(reader, parser, config.OutputJSON, config.Filter, config.StripANSI, config.ShowGroups, summary)
-			if err != nil {
-				return fmt.Errorf("failed to process data: %w", err)
-			}
-		} else {
-			iterator := parser.NewIterator(reader)
-			if config.OutputJSON {
-				err := outputJSONIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
-				if err != nil {
-					return fmt.Errorf("failed to process data: %w", err)
-				}
-			} else {
-				err := outputTextIterator(iterator, config.Filter, config.StripANSI, config.ShowGroups, summary)
-				if err != nil {
-					return fmt.Errorf("failed to process data: %w", err)
-				}
-			}
+		err := outputSeq2(reader, parser, config.OutputJSON, config.Filter, config.StripANSI, config.ShowGroups, summary)
+		if err != nil {
+			return fmt.Errorf("failed to process data: %w", err)
 		}
 	}
 
@@ -419,162 +393,8 @@ func shouldIncludeEntry(entry *buildkitelogs.LogEntry, filter string) bool {
 	}
 }
 
-func outputJSONIterator(iterator *buildkitelogs.LogIterator, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
-	type JSONEntry struct {
-		Timestamp string `json:"timestamp,omitempty"`
-		Content   string `json:"content"`
-		HasTime   bool   `json:"has_timestamp"`
-		Group     string `json:"group,omitempty"`
-	}
 
-	var jsonEntries []JSONEntry
 
-	for iterator.Next() {
-		entry := iterator.Entry()
-		summary.TotalEntries++
-
-		// Update entry type counts
-		if entry.HasTimestamp() {
-			summary.EntriesWithTime++
-		}
-		if entry.IsCommand() {
-			summary.Commands++
-		}
-		if entry.IsGroup() {
-			summary.Sections++
-		}
-		if entry.IsProgress() {
-			summary.Progress++
-		}
-
-		if !shouldIncludeEntry(entry, filter) {
-			continue
-		}
-
-		summary.FilteredEntries++
-
-		content := entry.Content
-		if stripANSI {
-			content = entry.CleanContent()
-		}
-
-		jsonEntry := JSONEntry{
-			Content: content,
-			HasTime: entry.HasTimestamp(),
-		}
-
-		if entry.HasTimestamp() {
-			jsonEntry.Timestamp = entry.Timestamp.Format("2006-01-02T15:04:05.000Z")
-		}
-
-		if showGroups && entry.Group != "" {
-			jsonEntry.Group = entry.Group
-		}
-
-		jsonEntries = append(jsonEntries, jsonEntry)
-	}
-
-	if err := iterator.Err(); err != nil {
-		return err
-	}
-
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(jsonEntries)
-}
-
-func outputTextIterator(iterator *buildkitelogs.LogIterator, filter string, stripANSI bool, showGroups bool, summary *ProcessingSummary) error {
-	for iterator.Next() {
-		entry := iterator.Entry()
-		summary.TotalEntries++
-
-		// Update entry type counts
-		if entry.HasTimestamp() {
-			summary.EntriesWithTime++
-		}
-		if entry.IsCommand() {
-			summary.Commands++
-		}
-		if entry.IsGroup() {
-			summary.Sections++
-		}
-		if entry.IsProgress() {
-			summary.Progress++
-		}
-
-		if !shouldIncludeEntry(entry, filter) {
-			continue
-		}
-
-		summary.FilteredEntries++
-
-		content := entry.Content
-		if stripANSI {
-			content = entry.CleanContent()
-		}
-
-		if showGroups && entry.Group != "" {
-			if entry.HasTimestamp() {
-				fmt.Printf("[%s] [%s] %s\n", entry.Timestamp.Format("2006-01-02 15:04:05.000"), entry.Group, content)
-			} else {
-				fmt.Printf("[%s] %s\n", entry.Group, content)
-			}
-		} else {
-			if entry.HasTimestamp() {
-				fmt.Printf("[%s] %s\n", entry.Timestamp.Format("2006-01-02 15:04:05.000"), content)
-			} else {
-				fmt.Printf("%s\n", content)
-			}
-		}
-	}
-
-	return iterator.Err()
-}
-
-func exportToParquet(reader io.Reader, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
-	iterator := parser.NewIterator(reader)
-
-	// Create filter function based on filter string
-	var filterFunc func(*buildkitelogs.LogEntry) bool
-	if filter != "" {
-		filterFunc = func(entry *buildkitelogs.LogEntry) bool {
-			return shouldIncludeEntry(entry, filter)
-		}
-	}
-
-	// Count entries for summary while iterating
-	var entries []*buildkitelogs.LogEntry
-	for iterator.Next() {
-		entry := iterator.Entry()
-		summary.TotalEntries++
-
-		// Update entry type counts
-		if entry.HasTimestamp() {
-			summary.EntriesWithTime++
-		}
-		if entry.IsCommand() {
-			summary.Commands++
-		}
-		if entry.IsGroup() {
-			summary.Sections++
-		}
-		if entry.IsProgress() {
-			summary.Progress++
-		}
-
-		// Apply filter if specified
-		if filterFunc == nil || filterFunc(entry) {
-			summary.FilteredEntries++
-			entries = append(entries, entry)
-		}
-	}
-
-	if err := iterator.Err(); err != nil {
-		return err
-	}
-
-	return buildkitelogs.ExportToParquet(entries, filename)
-}
 
 func exportToParquetSeq2(reader io.Reader, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
 	// Create filter function based on filter string
