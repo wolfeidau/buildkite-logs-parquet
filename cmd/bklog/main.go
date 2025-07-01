@@ -157,6 +157,8 @@ func handleQueryCommand() {
 	queryFlags.StringVar(&config.GroupName, "group", "", "Group name to filter by (for by-group operation)")
 	queryFlags.StringVar(&config.Format, "format", "text", "Output format: text, json")
 	queryFlags.BoolVar(&config.ShowStats, "stats", true, "Show query statistics")
+	queryFlags.BoolVar(&config.UseStreaming, "streaming", true, "Use streaming iterators for better memory efficiency")
+	queryFlags.IntVar(&config.LimitEntries, "limit", 0, "Limit number of entries returned (0 = no limit, enables early termination)")
 
 	queryFlags.Usage = func() {
 		fmt.Printf("Usage: %s query -file <parquet-file> [options]\n\n", os.Args[0])
@@ -170,6 +172,8 @@ func handleQueryCommand() {
 		fmt.Printf("  %s query -file logs.parquet -op list-groups\n", os.Args[0])
 		fmt.Printf("  %s query -file logs.parquet -op by-group -group \"Running tests\"\n", os.Args[0])
 		fmt.Printf("  %s query -file logs.parquet -op list-groups -format json\n", os.Args[0])
+		fmt.Printf("  %s query -file logs.parquet -op by-group -group \"test\" -limit 100\n", os.Args[0])
+		fmt.Printf("  %s query -file logs.parquet -op list-groups -streaming=false\n", os.Args[0])
 	}
 
 	if err := queryFlags.Parse(os.Args[2:]); err != nil {
