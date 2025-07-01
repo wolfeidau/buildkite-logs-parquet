@@ -1,6 +1,7 @@
 package buildkitelogs
 
 import (
+	"bytes"
 	"strconv"
 	"time"
 )
@@ -76,12 +77,7 @@ func hasOSCStart(data []byte) bool {
 	}
 
 	return data[0] == 0x1b && // ESC
-		data[1] == '_' &&
-		data[2] == 'b' &&
-		data[3] == 'k' &&
-		data[4] == ';' &&
-		data[5] == 't' &&
-		data[6] == '='
+		bytes.HasPrefix(data[1:], []byte("_bk;t="))
 }
 
 // findBEL finds the position of the BEL character (\x07) starting from offset

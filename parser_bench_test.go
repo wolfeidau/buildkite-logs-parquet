@@ -114,8 +114,8 @@ func BenchmarkIterator(b *testing.B) {
 	}
 }
 
-// BenchmarkParseReader tests the performance of the legacy approach
-func BenchmarkParseReader(b *testing.B) {
+// BenchmarkParseReaderLegacy tests the performance of collecting all entries in memory
+func BenchmarkParseReaderLegacy(b *testing.B) {
 	sizes := []int{100, 1000, 10000, 100000}
 
 	for _, size := range sizes {
@@ -126,9 +126,14 @@ func BenchmarkParseReader(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(data)
-				entries, err := parser.ParseReader(reader)
-				if err != nil {
-					b.Fatal(err)
+
+				// Collect all entries using streaming iterator (equivalent to old ParseReader)
+				var entries []*LogEntry
+				for entry, err := range parser.All(reader) {
+					if err != nil {
+						b.Fatal(err)
+					}
+					entries = append(entries, entry)
 				}
 
 				if len(entries) != size {
@@ -208,13 +213,18 @@ func BenchmarkMemoryUsage(b *testing.B) {
 		}
 	})
 
-	b.Run("parse_reader", func(b *testing.B) {
+	b.Run("collect_all_entries", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			reader := strings.NewReader(data)
-			entries, err := parser.ParseReader(reader)
-			if err != nil {
-				b.Fatal(err)
+
+			// Collect all entries using streaming iterator
+			var entries []*LogEntry
+			for entry, err := range parser.All(reader) {
+				if err != nil {
+					b.Fatal(err)
+				}
+				entries = append(entries, entry)
 			}
 
 			// Access each entry to simulate usage
@@ -340,9 +350,12 @@ func BenchmarkParquetExport(b *testing.B) {
 
 			// Pre-parse entries to isolate export performance
 			reader := strings.NewReader(data)
-			entries, err := parser.ParseReader(reader)
-			if err != nil {
-				b.Fatal(err)
+			var entries []*LogEntry
+			for entry, err := range parser.All(reader) {
+				if err != nil {
+					b.Fatal(err)
+				}
+				entries = append(entries, entry)
 			}
 
 			b.ResetTimer()
@@ -421,9 +434,12 @@ func BenchmarkParquetExportComparison(b *testing.B) {
 
 	// Pre-parse for slice-based export
 	reader := strings.NewReader(data)
-	entries, err := parser.ParseReader(reader)
-	if err != nil {
-		b.Fatal(err)
+	var entries []*LogEntry
+	for entry, err := range parser.All(reader) {
+		if err != nil {
+			b.Fatal(err)
+		}
+		entries = append(entries, entry)
 	}
 
 	b.Run("slice_export", func(b *testing.B) {
@@ -531,9 +547,12 @@ func BenchmarkContentClassification(b *testing.B) {
 	reader := strings.NewReader(data)
 
 	// Pre-parse entries
-	entries, err := parser.ParseReader(reader)
-	if err != nil {
-		b.Fatal(err)
+	var entries []*LogEntry
+	for entry, err := range parser.All(reader) {
+		if err != nil {
+			b.Fatal(err)
+		}
+		entries = append(entries, entry)
 	}
 
 	b.Run("is_command", func(b *testing.B) {
