@@ -13,11 +13,13 @@ import (
 // QueryConfig holds configuration for CLI query operations
 type QueryConfig struct {
 	ParquetFile  string
-	Operation    string // "list-groups", "by-group"
+	Operation    string // "list-groups", "by-group", "info", "tail"
 	GroupName    string
 	Format       string // "text", "json"
 	ShowStats    bool
-	LimitEntries int  // Limit output entries (0 = no limit)
+	LimitEntries int   // Limit output entries (0 = no limit)
+	TailLines    int   // Number of lines to show from end (for tail operation)
+	SeekToRow    int64 // Row number to seek to (0-based)
 }
 
 // runQuery executes a query using streaming iterators
@@ -38,11 +40,16 @@ func runStreamingQuery(reader *buildkitelogs.ParquetReader, config *QueryConfig)
 			return fmt.Errorf("group pattern is required for by-group operation")
 		}
 		return streamByGroup(reader, config, start)
+	case "info":
+		return showFileInfo(reader, config)
+	case "tail":
+		return tailFile(reader, config, start)
+	case "seek":
+		return seekToRow(reader, config, start)
 	default:
 		return fmt.Errorf("unknown operation: %s", config.Operation)
 	}
 }
-
 
 // streamListGroups handles list-groups operation using streaming
 func streamListGroups(reader *buildkitelogs.ParquetReader, config *QueryConfig, start time.Time) error {
@@ -270,6 +277,225 @@ func formatStreamingEntriesResult(entries []buildkitelogs.ParquetLogEntry, total
 			fmt.Printf("Total entries: %d\n", totalEntries)
 		}
 		fmt.Printf("Matched entries: %d\n", matchedEntries)
+		fmt.Printf("Query time: %.2f ms\n", queryTime)
+	}
+
+	return nil
+}
+
+// showFileInfo displays metadata about the Parquet file
+func showFileInfo(reader *buildkitelogs.ParquetReader, config *QueryConfig) error {
+	info, err := reader.GetFileInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get file info: %w", err)
+	}
+
+	if config.Format == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(info)
+	}
+
+	// Text format
+	fmt.Printf("Parquet File Information:\n")
+	fmt.Printf("  File:         %s\n", config.ParquetFile)
+	fmt.Printf("  Rows:         %d\n", info.RowCount)
+	fmt.Printf("  Columns:      %d\n", info.ColumnCount)
+	fmt.Printf("  File Size:    %d bytes (%.2f MB)\n", info.FileSize, float64(info.FileSize)/(1024*1024))
+	fmt.Printf("  Row Groups:   %d\n", info.NumRowGroups)
+
+	return nil
+}
+
+// tailFile shows the last N entries from the file
+func tailFile(reader *buildkitelogs.ParquetReader, config *QueryConfig, start time.Time) error {
+	// Get file info to calculate starting position
+	info, err := reader.GetFileInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get file info: %w", err)
+	}
+
+	// Calculate starting row for tail operation
+	tailLines := int64(config.TailLines)
+	if tailLines <= 0 {
+		tailLines = 10 // Default to 10 lines
+	}
+
+	startRow := info.RowCount - tailLines
+	if startRow < 0 {
+		startRow = 0
+	}
+
+	var entries []buildkitelogs.ParquetLogEntry
+	entriesRead := 0
+
+	for entry, err := range reader.SeekToRow(startRow) {
+		if err != nil {
+			return fmt.Errorf("error reading entries: %w", err)
+		}
+
+		entries = append(entries, entry)
+		entriesRead++
+
+		// Limit to requested tail lines
+		if entriesRead >= int(tailLines) {
+			break
+		}
+	}
+
+	// Format output
+	queryTime := float64(time.Since(start).Nanoseconds()) / 1e6
+	return formatTailResult(entries, info.RowCount, int64(entriesRead), queryTime, config)
+}
+
+// seekToRow starts reading from a specific row
+func seekToRow(reader *buildkitelogs.ParquetReader, config *QueryConfig, start time.Time) error {
+	var entries []buildkitelogs.ParquetLogEntry
+	entriesRead := 0
+
+	for entry, err := range reader.SeekToRow(config.SeekToRow) {
+		if err != nil {
+			return fmt.Errorf("error reading entries: %w", err)
+		}
+
+		entries = append(entries, entry)
+		entriesRead++
+
+		// Apply limit if specified
+		if config.LimitEntries > 0 && entriesRead >= config.LimitEntries {
+			break
+		}
+	}
+
+	// Format output
+	queryTime := float64(time.Since(start).Nanoseconds()) / 1e6
+	return formatSeekResult(entries, config.SeekToRow, int64(entriesRead), queryTime, config)
+}
+
+// formatTailResult formats tail command output
+func formatTailResult(entries []buildkitelogs.ParquetLogEntry, totalRows, entriesRead int64, queryTime float64, config *QueryConfig) error {
+	if config.Format == "json" {
+		result := struct {
+			Entries []buildkitelogs.ParquetLogEntry `json:"entries"`
+			Stats   struct {
+				TotalRows    int64   `json:"total_rows"`
+				EntriesShown int64   `json:"entries_shown"`
+				QueryTime    float64 `json:"query_time_ms"`
+			} `json:"stats,omitempty"`
+		}{
+			Entries: entries,
+		}
+
+		if config.ShowStats {
+			result.Stats.TotalRows = totalRows
+			result.Stats.EntriesShown = entriesRead
+			result.Stats.QueryTime = queryTime
+		}
+
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(result)
+	}
+
+	// Text format
+	fmt.Printf("Last %d entries:\n\n", entriesRead)
+
+	for _, entry := range entries {
+		timestamp := time.Unix(0, entry.Timestamp*int64(time.Millisecond))
+
+		var markers []string
+		if entry.IsCommand {
+			markers = append(markers, "CMD")
+		}
+		if entry.IsGroup {
+			markers = append(markers, "GRP")
+		}
+		if entry.IsProgress {
+			markers = append(markers, "PROG")
+		}
+
+		markerStr := ""
+		if len(markers) > 0 {
+			markerStr = fmt.Sprintf(" [%s]", strings.Join(markers, ","))
+		}
+
+		fmt.Printf("[%s]%s %s\n",
+			timestamp.Format("2006-01-02 15:04:05.000"),
+			markerStr,
+			entry.Content)
+	}
+
+	if config.ShowStats {
+		fmt.Printf("\n--- Tail Statistics ---\n")
+		fmt.Printf("Total rows in file: %d\n", totalRows)
+		fmt.Printf("Entries shown: %d\n", entriesRead)
+		fmt.Printf("Query time: %.2f ms\n", queryTime)
+	}
+
+	return nil
+}
+
+// formatSeekResult formats seek command output
+func formatSeekResult(entries []buildkitelogs.ParquetLogEntry, startRow, entriesRead int64, queryTime float64, config *QueryConfig) error {
+	if config.Format == "json" {
+		result := struct {
+			Entries []buildkitelogs.ParquetLogEntry `json:"entries"`
+			Stats   struct {
+				StartRow     int64   `json:"start_row"`
+				EntriesShown int64   `json:"entries_shown"`
+				QueryTime    float64 `json:"query_time_ms"`
+			} `json:"stats,omitempty"`
+		}{
+			Entries: entries,
+		}
+
+		if config.ShowStats {
+			result.Stats.StartRow = startRow
+			result.Stats.EntriesShown = entriesRead
+			result.Stats.QueryTime = queryTime
+		}
+
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(result)
+	}
+
+	// Text format
+	limitText := ""
+	if config.LimitEntries > 0 && entriesRead >= int64(config.LimitEntries) {
+		limitText = fmt.Sprintf(" (limited to %d)", config.LimitEntries)
+	}
+	fmt.Printf("Entries starting from row %d: %d%s\n\n", startRow, entriesRead, limitText)
+
+	for _, entry := range entries {
+		timestamp := time.Unix(0, entry.Timestamp*int64(time.Millisecond))
+
+		var markers []string
+		if entry.IsCommand {
+			markers = append(markers, "CMD")
+		}
+		if entry.IsGroup {
+			markers = append(markers, "GRP")
+		}
+		if entry.IsProgress {
+			markers = append(markers, "PROG")
+		}
+
+		markerStr := ""
+		if len(markers) > 0 {
+			markerStr = fmt.Sprintf(" [%s]", strings.Join(markers, ","))
+		}
+
+		fmt.Printf("[%s]%s %s\n",
+			timestamp.Format("2006-01-02 15:04:05.000"),
+			markerStr,
+			entry.Content)
+	}
+
+	if config.ShowStats {
+		fmt.Printf("\n--- Seek Statistics ---\n")
+		fmt.Printf("Start row: %d\n", startRow)
+		fmt.Printf("Entries shown: %d\n", entriesRead)
 		fmt.Printf("Query time: %.2f ms\n", queryTime)
 	}
 
