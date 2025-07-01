@@ -16,7 +16,7 @@ func NewByteParser() *ByteParser {
 // ParseLine parses a single log line using byte scanning
 func (p *ByteParser) ParseLine(line string) (*LogEntry, error) {
 	data := []byte(line)
-	
+
 	// Check for OSC sequence: ESC_bk;t=timestamp BEL content
 	if len(data) < 10 { // Minimum: \x1b_bk;t=1\x07
 		return &LogEntry{
@@ -26,7 +26,7 @@ func (p *ByteParser) ParseLine(line string) (*LogEntry, error) {
 			Group:     "",
 		}, nil
 	}
-	
+
 	// Look for OSC start sequence: \x1b_bk;t=
 	if !hasOSCStart(data) {
 		return &LogEntry{
@@ -36,7 +36,7 @@ func (p *ByteParser) ParseLine(line string) (*LogEntry, error) {
 			Group:     "",
 		}, nil
 	}
-	
+
 	// Find the timestamp and content
 	timestampStart := 7 // After \x1b_bk;t=
 	timestampEnd := findBEL(data, timestampStart)
@@ -48,19 +48,19 @@ func (p *ByteParser) ParseLine(line string) (*LogEntry, error) {
 			Group:     "",
 		}, nil
 	}
-	
+
 	// Extract timestamp
 	timestampBytes := data[timestampStart:timestampEnd]
 	timestampMs, err := strconv.ParseInt(string(timestampBytes), 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	timestamp := time.Unix(0, timestampMs*int64(time.Millisecond))
-	
+
 	// Extract content (after BEL)
 	content := string(data[timestampEnd+1:])
-	
+
 	return &LogEntry{
 		Timestamp: timestamp,
 		Content:   content,
@@ -74,7 +74,7 @@ func hasOSCStart(data []byte) bool {
 	if len(data) < 7 {
 		return false
 	}
-	
+
 	return data[0] == 0x1b && // ESC
 		data[1] == '_' &&
 		data[2] == 'b' &&
@@ -98,7 +98,7 @@ func findBEL(data []byte, start int) int {
 func (p *ByteParser) StripANSI(content string) string {
 	data := []byte(content)
 	result := make([]byte, 0, len(data))
-	
+
 	i := 0
 	for i < len(data) {
 		// Check for ANSI escape sequence
@@ -117,7 +117,7 @@ func (p *ByteParser) StripANSI(content string) string {
 			// Handle sequences that might be missing ESC
 			j := i + 1
 			hasValidANSI := false
-			
+
 			// Look ahead to see if this looks like an ANSI sequence
 			for j < len(data) && j < i+10 { // Limit lookahead
 				if data[j] >= '0' && data[j] <= '9' || data[j] == ';' {
@@ -129,7 +129,7 @@ func (p *ByteParser) StripANSI(content string) string {
 					break
 				}
 			}
-			
+
 			if hasValidANSI {
 				// Skip the ANSI sequence
 				i = j + 1
@@ -144,7 +144,7 @@ func (p *ByteParser) StripANSI(content string) string {
 			i++
 		}
 	}
-	
+
 	return string(result)
 }
 

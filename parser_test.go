@@ -119,52 +119,52 @@ func TestLogEntryClassification(t *testing.T) {
 	parser := NewParser()
 
 	tests := []struct {
-		name        string
-		input       string
-		wantCommand bool
-		wantSection bool
+		name         string
+		input        string
+		wantCommand  bool
+		wantSection  bool
 		wantProgress bool
 	}{
 		{
-			name:        "Command with ANSI",
-			input:       "\x1b_bk;t=1745322209921\x07[90m$[0m /buildkite/agent/hooks/environment",
-			wantCommand: true,
-			wantSection: false,
+			name:         "Command with ANSI",
+			input:        "\x1b_bk;t=1745322209921\x07[90m$[0m /buildkite/agent/hooks/environment",
+			wantCommand:  true,
+			wantSection:  false,
 			wantProgress: false,
 		},
 		{
-			name:        "Section header",
-			input:       "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook",
-			wantCommand: false,
-			wantSection: true,
+			name:         "Section header",
+			input:        "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook",
+			wantCommand:  false,
+			wantSection:  true,
 			wantProgress: false,
 		},
 		{
-			name:        "Progress line",
-			input:       "\x1b_bk;t=1745322210213\x07remote: Counting objects:  50% (27/54)[K",
-			wantCommand: false,
-			wantSection: false,
+			name:         "Progress line",
+			input:        "\x1b_bk;t=1745322210213\x07remote: Counting objects:  50% (27/54)[K",
+			wantCommand:  false,
+			wantSection:  false,
 			wantProgress: true,
 		},
 		{
-			name:        "Progress with ANSI and K",
-			input:       "\x1b_bk;t=1745322210213\x07remote: Counting objects:  50% (27/54)[K",
-			wantCommand: false,
-			wantSection: false,
+			name:         "Progress with ANSI and K",
+			input:        "\x1b_bk;t=1745322210213\x07remote: Counting objects:  50% (27/54)[K",
+			wantCommand:  false,
+			wantSection:  false,
 			wantProgress: true,
 		},
 		{
-			name:        "Build artifact section",
-			input:       "\x1b_bk;t=1745322210701\x07+++ :frame_with_picture: Inline image uploaded",
-			wantCommand: false,
-			wantSection: true,
+			name:         "Build artifact section",
+			input:        "\x1b_bk;t=1745322210701\x07+++ :frame_with_picture: Inline image uploaded",
+			wantCommand:  false,
+			wantSection:  true,
 			wantProgress: false,
 		},
 		{
-			name:        "Regular output",
-			input:       "\x1b_bk;t=1745322210701\x07Cloning into '.'...",
-			wantCommand: false,
-			wantSection: false,
+			name:         "Regular output",
+			input:        "\x1b_bk;t=1745322210701\x07Cloning into '.'...",
+			wantCommand:  false,
+			wantSection:  false,
 			wantProgress: false,
 		},
 	}
@@ -193,7 +193,7 @@ func TestLogEntryClassification(t *testing.T) {
 
 func TestParseReader(t *testing.T) {
 	parser := NewParser()
-	
+
 	input := "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook\n" +
 		"\x1b_bk;t=1745322209921\x07[90m$[0m /buildkite/agent/hooks/environment\n" +
 		"regular log line without OSC\n" +
@@ -217,7 +217,7 @@ func TestParseReader(t *testing.T) {
 		t.Error("First entry should be a section")
 	}
 
-	// Check second entry  
+	// Check second entry
 	if !entries[1].HasTimestamp() {
 		t.Error("Second entry should have timestamp")
 	}
@@ -244,7 +244,7 @@ func TestParseReader(t *testing.T) {
 
 func TestLogIterator(t *testing.T) {
 	parser := NewParser()
-	
+
 	input := "\x1b_bk;t=1745322209921\x07~~~ Running global environment hook\n" +
 		"\x1b_bk;t=1745322209921\x07[90m$[0m /buildkite/agent/hooks/environment\n" +
 		"regular log line without OSC\n" +
@@ -328,7 +328,7 @@ func TestLogIteratorEmpty(t *testing.T) {
 
 func TestLogIteratorError(t *testing.T) {
 	parser := NewParser()
-	
+
 	// Create a reader that will cause an error after first read
 	input := "\x1b_bk;t=999999999999999999999999999999\x07content"
 	reader := strings.NewReader(input)

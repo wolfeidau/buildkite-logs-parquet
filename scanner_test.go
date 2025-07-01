@@ -55,14 +55,14 @@ func TestByteParserBasic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			entry, err := parser.ParseLine(tt.input)
-			
+
 			if tt.name == "Invalid OSC sequence" {
 				if err == nil {
 					t.Error("Expected error for invalid timestamp")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Fatalf("ParseLine() error = %v", err)
 			}
@@ -152,13 +152,13 @@ func TestByteParserEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Should not panic
 			entry, err := parser.ParseLine(tt.input)
-			
+
 			// For invalid cases, either return original line or error
 			if err != nil {
 				// Error is acceptable for malformed input
 				return
 			}
-			
+
 			if entry == nil {
 				t.Error("ParseLine() returned nil entry")
 			}
