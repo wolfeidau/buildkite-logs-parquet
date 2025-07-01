@@ -16,10 +16,9 @@ func BenchmarkParquetReader_ListGroups(b *testing.B) {
 
 	reader := NewParquetReader(testFile)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		groups, err := reader.ListGroups()
 		if err != nil {
 			b.Fatalf("ListGroups failed: %v", err)
@@ -39,10 +38,9 @@ func BenchmarkParquetReader_FilterByGroup(b *testing.B) {
 
 	reader := NewParquetReader(testFile)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		entries, err := reader.FilterByGroup("environment")
 		if err != nil {
 			b.Fatalf("FilterByGroup failed: %v", err)
@@ -62,10 +60,9 @@ func BenchmarkParquetReader_ReadEntries(b *testing.B) {
 
 	reader := NewParquetReader(testFile)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		entries, err := reader.ReadEntries()
 		if err != nil {
 			b.Fatalf("ReadEntries failed: %v", err)
@@ -88,8 +85,8 @@ func BenchmarkParquetReader_Query(b *testing.B) {
 	b.Run("ListGroups", func(b *testing.B) {
 		b.ResetTimer()
 		b.ReportAllocs()
-		
-		for i := 0; i < b.N; i++ {
+
+		for b.Loop() {
 			result, err := reader.Query("list-groups", "")
 			if err != nil {
 				b.Fatalf("Query failed: %v", err)
@@ -103,8 +100,8 @@ func BenchmarkParquetReader_Query(b *testing.B) {
 	b.Run("FilterByGroup", func(b *testing.B) {
 		b.ResetTimer()
 		b.ReportAllocs()
-		
-		for i := 0; i < b.N; i++ {
+
+		for b.Loop() {
 			result, err := reader.Query("by-group", "environment")
 			if err != nil {
 				b.Fatalf("Query failed: %v", err)
@@ -126,7 +123,7 @@ func BenchmarkReadParquetFile(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		entries, err := ReadParquetFile(testFile)
 		if err != nil {
 			b.Fatalf("ReadParquetFile failed: %v", err)
@@ -145,7 +142,7 @@ func BenchmarkListGroups(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		groups := ListGroups(mockEntries)
 		if len(groups) == 0 {
 			b.Fatal("No groups found")
@@ -161,7 +158,7 @@ func BenchmarkFilterByGroup(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		filtered := FilterByGroup(mockEntries, "test")
 		_ = filtered // Use the result to prevent optimization
 	}
@@ -177,7 +174,7 @@ func BenchmarkParquetReaderOperations(b *testing.B) {
 	reader := NewParquetReader(testFile)
 
 	b.Run("ReadEntries", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			entries, err := reader.ReadEntries()
 			if err != nil {
 				b.Fatalf("ReadEntries failed: %v", err)
@@ -187,7 +184,7 @@ func BenchmarkParquetReaderOperations(b *testing.B) {
 	})
 
 	b.Run("ListGroups", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			groups, err := reader.ListGroups()
 			if err != nil {
 				b.Fatalf("ListGroups failed: %v", err)
@@ -197,7 +194,7 @@ func BenchmarkParquetReaderOperations(b *testing.B) {
 	})
 
 	b.Run("FilterByGroup", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			entries, err := reader.FilterByGroup("environment")
 			if err != nil {
 				b.Fatalf("FilterByGroup failed: %v", err)
@@ -220,14 +217,14 @@ func BenchmarkMemoryEfficiency(b *testing.B) {
 	b.ReportAllocs()
 
 	var result *QueryResult
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var err error
 		result, err = reader.Query("list-groups", "")
 		if err != nil {
 			b.Fatalf("Query failed: %v", err)
 		}
 	}
-	
+
 	// Use result to prevent optimization
 	_ = result
 }
@@ -236,10 +233,10 @@ func BenchmarkMemoryEfficiency(b *testing.B) {
 func createMockParquetEntries(count int) []ParquetLogEntry {
 	baseTime := time.Date(2025, 4, 22, 21, 43, 29, 0, time.UTC).UnixMilli()
 	entries := make([]ParquetLogEntry, count)
-	
+
 	groups := []string{
 		"~~~ Running global environment hook",
-		"~~~ Running global pre-checkout hook", 
+		"~~~ Running global pre-checkout hook",
 		"~~~ Preparing working directory",
 		"--- :package: Build job checkout directory",
 		"+++ :hammer: Example tests",
@@ -255,40 +252,205 @@ func createMockParquetEntries(count int) []ParquetLogEntry {
 			Content:     fmt.Sprintf("Log entry %d content for testing", i),
 			Group:       groups[groupIdx],
 			HasTime:     true,
-			IsCommand:   i%4 == 0, // Every 4th entry is a command
-			IsGroup:     i%10 == 0, // Every 10th entry starts a group
-			IsProgress:  i%20 == 0, // Every 20th entry is progress
+			IsCommand:   i%4 == 0,              // Every 4th entry is a command
+			IsGroup:     i%10 == 0,             // Every 10th entry starts a group
+			IsProgress:  i%20 == 0,             // Every 20th entry is progress
 			RawLineSize: int32(20 + (i % 100)), // Variable line sizes
 		}
 	}
-	
+
 	return entries
+}
+
+// BenchmarkIteratorVsArray compares iterator vs array performance
+func BenchmarkIteratorVsArray(b *testing.B) {
+	testFile := "test_logs.parquet"
+	if _, err := os.Stat(testFile); os.IsNotExist(err) {
+		b.Skip("test_logs.parquet not found")
+	}
+
+	reader := NewParquetReader(testFile)
+
+	b.Run("ReadEntries_Array", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			entries, err := reader.ReadEntries()
+			if err != nil {
+				b.Fatalf("ReadEntries failed: %v", err)
+			}
+			_ = entries
+		}
+	})
+
+	b.Run("ReadEntriesIter_Iterator", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			count := 0
+			for entry, err := range reader.ReadEntriesIter() {
+				if err != nil {
+					b.Fatalf("ReadEntriesIter failed: %v", err)
+				}
+				count++
+				_ = entry
+			}
+			if count == 0 {
+				b.Fatal("No entries found")
+			}
+		}
+	})
+
+	b.Run("FilterByGroup_Array", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			entries, err := reader.FilterByGroup("environment")
+			if err != nil {
+				b.Fatalf("FilterByGroup failed: %v", err)
+			}
+			_ = entries
+		}
+	})
+
+	b.Run("FilterByGroupIter_Iterator", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			count := 0
+			for entry, err := range reader.FilterByGroupIter("environment") {
+				if err != nil {
+					b.Fatalf("FilterByGroupIter failed: %v", err)
+				}
+				count++
+				_ = entry
+			}
+		}
+	})
+}
+
+// BenchmarkParquetMemoryUsage compares memory usage patterns for parquet operations
+func BenchmarkParquetMemoryUsage(b *testing.B) {
+	testFile := "test_logs.parquet"
+	if _, err := os.Stat(testFile); os.IsNotExist(err) {
+		b.Skip("test_logs.parquet not found")
+	}
+
+	reader := NewParquetReader(testFile)
+
+	b.Run("Array_FullLoad", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			entries, err := reader.ReadEntries()
+			if err != nil {
+				b.Fatalf("ReadEntries failed: %v", err)
+			}
+
+			// Simulate processing all entries
+			for _, entry := range entries {
+				_ = entry.Content
+			}
+		}
+	})
+
+	b.Run("Iterator_Streaming", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			for entry, err := range reader.ReadEntriesIter() {
+				if err != nil {
+					b.Fatalf("ReadEntriesIter failed: %v", err)
+				}
+
+				// Simulate processing entry
+				_ = entry.Content
+			}
+		}
+	})
+}
+
+// BenchmarkEarlyTermination tests iterator advantage for partial processing
+func BenchmarkEarlyTermination(b *testing.B) {
+	testFile := "test_logs.parquet"
+	if _, err := os.Stat(testFile); os.IsNotExist(err) {
+		b.Skip("test_logs.parquet not found")
+	}
+
+	reader := NewParquetReader(testFile)
+	targetCount := 100 // Only process first 100 entries
+
+	b.Run("Array_StopEarly", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			entries, err := reader.ReadEntries()
+			if err != nil {
+				b.Fatalf("ReadEntries failed: %v", err)
+			}
+
+			// Process only first 100 entries (but entire array was loaded)
+			for j, entry := range entries {
+				if j >= targetCount {
+					break
+				}
+				_ = entry.Content
+			}
+		}
+	})
+
+	b.Run("Iterator_StopEarly", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			count := 0
+			for entry, err := range reader.ReadEntriesIter() {
+				if err != nil {
+					b.Fatalf("ReadEntriesIter failed: %v", err)
+				}
+
+				_ = entry.Content
+				count++
+				if count >= targetCount {
+					break // Iterator stops reading file
+				}
+			}
+		}
+	})
 }
 
 // BenchmarkScalability tests performance with different data sizes
 func BenchmarkScalability(b *testing.B) {
 	sizes := []int{100, 1000, 10000}
-	
+
 	for _, size := range sizes {
 		b.Run(fmt.Sprintf("ListGroups_%d_entries", size), func(b *testing.B) {
 			entries := createMockParquetEntries(size)
-			
+
 			b.ResetTimer()
 			b.ReportAllocs()
-			
-			for i := 0; i < b.N; i++ {
+
+			for b.Loop() {
 				groups := ListGroups(entries)
 				_ = groups
 			}
 		})
-		
+
 		b.Run(fmt.Sprintf("FilterByGroup_%d_entries", size), func(b *testing.B) {
 			entries := createMockParquetEntries(size)
-			
+
 			b.ResetTimer()
 			b.ReportAllocs()
-			
-			for i := 0; i < b.N; i++ {
+
+			for b.Loop() {
 				filtered := FilterByGroup(entries, "test")
 				_ = filtered
 			}
