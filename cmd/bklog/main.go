@@ -120,19 +120,19 @@ func handleParseCommand() {
 	// Validate that either file or API parameters are provided
 	hasFile := config.FilePath != ""
 	hasAPIParams := config.Organization != "" || config.Pipeline != "" || config.Build != "" || config.Job != ""
-	
+
 	if !hasFile && !hasAPIParams {
 		fmt.Fprintf(os.Stderr, "Error: Must provide either -file or API parameters (-org, -pipeline, -build, -job)\n\n")
 		parseFlags.Usage()
 		os.Exit(1)
 	}
-	
+
 	if hasFile && hasAPIParams {
 		fmt.Fprintf(os.Stderr, "Error: Cannot use both -file and API parameters simultaneously\n\n")
 		parseFlags.Usage()
 		os.Exit(1)
 	}
-	
+
 	// If using API, validate all required parameters are present
 	if hasAPIParams {
 		if err := buildkitelogs.ValidateAPIParams(config.Organization, config.Pipeline, config.Build, config.Job); err != nil {
@@ -196,7 +196,7 @@ func handleQueryCommand() {
 func runParse(config *Config) error {
 	var reader io.ReadCloser
 	var bytesProcessed int64
-	
+
 	// Determine data source: file or API
 	if config.FilePath != "" {
 		// Local file
@@ -205,7 +205,7 @@ func runParse(config *Config) error {
 			return fmt.Errorf("failed to open file: %w", err)
 		}
 		reader = file
-		
+
 		// Get file size for bytes processed calculation
 		fileInfo, err := file.Stat()
 		if err != nil {
@@ -219,7 +219,7 @@ func runParse(config *Config) error {
 		if apiToken == "" {
 			return fmt.Errorf("BUILDKITE_API_TOKEN environment variable is required for API access")
 		}
-		
+
 		client := buildkitelogs.NewBuildkiteAPIClient(apiToken, version)
 		logReader, err := client.GetJobLog(config.Organization, config.Pipeline, config.Build, config.Job)
 		if err != nil {
@@ -228,7 +228,7 @@ func runParse(config *Config) error {
 		reader = logReader
 		bytesProcessed = -1 // Unknown for API
 	}
-	
+
 	defer func() {
 		if closeErr := reader.Close(); closeErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to close reader: %v\n", closeErr)

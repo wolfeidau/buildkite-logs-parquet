@@ -43,15 +43,15 @@ func (p *Parser) ParseLine(line string) (*LogEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Update current group if this is a group header
 	if entry.IsGroup() {
 		p.currentGroup = entry.CleanContent()
 	}
-	
+
 	// Set the group for this entry
 	entry.Group = p.currentGroup
-	
+
 	return entry, nil
 }
 
@@ -90,20 +90,20 @@ func (p *Parser) NewIterator(reader io.Reader) *LogIterator {
 func (p *Parser) All(reader io.Reader) iter.Seq2[*LogEntry, error] {
 	return func(yield func(*LogEntry, error) bool) {
 		scanner := bufio.NewScanner(reader)
-		
+
 		for scanner.Scan() {
 			line := scanner.Text()
 			entry, err := p.ParseLine(line)
-			
+
 			// Yield both the entry (which may be nil if err != nil) and the error
 			if !yield(entry, err) {
 				return
 			}
-			
+
 			// If there was a parse error, we've yielded it to the caller
 			// They can decide whether to continue or stop
 		}
-		
+
 		// Check for scanner errors and yield final error if any
 		if err := scanner.Err(); err != nil {
 			yield(nil, err)

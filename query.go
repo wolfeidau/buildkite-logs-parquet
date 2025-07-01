@@ -479,7 +479,7 @@ func readParquetFileStreamingIter(filename string, batchSize int64) iter.Seq2[Pa
 
 		// Get schema from the first record peek or metadata
 		var columnIndices *columnMapping
-		
+
 		// Stream records in batches
 		for {
 			record, err := recordReader.Read()
@@ -504,7 +504,7 @@ func readParquetFileStreamingIter(filename string, batchSize int64) iter.Seq2[Pa
 			// Process record batch with immediate cleanup
 			shouldContinue := func() bool {
 				defer record.Release()
-				
+
 				// Convert record to entries using streaming iterator
 				for entry, err := range convertRecordToEntriesIterStreaming(record, columnIndices) {
 					if !yield(entry, err) {
@@ -513,7 +513,7 @@ func readParquetFileStreamingIter(filename string, batchSize int64) iter.Seq2[Pa
 				}
 				return true
 			}()
-			
+
 			if !shouldContinue {
 				return
 			}
@@ -588,167 +588,6 @@ func convertRecordToEntriesIterStreaming(record arrow.Record, mapping *columnMap
 		}
 		if mapping.rawSizeIdx >= 0 {
 			rawSizeCol = record.Column(mapping.rawSizeIdx)
-		}
-
-		// Convert each row
-		for i := 0; i < numRows; i++ {
-			entry := ParquetLogEntry{}
-
-			// Timestamp (required)
-			if timestampCol.IsNull(i) {
-				entry.Timestamp = 0
-			} else {
-				switch ts := timestampCol.(type) {
-				case *array.Int64:
-					entry.Timestamp = ts.Value(i)
-				default:
-					yield(ParquetLogEntry{}, fmt.Errorf("unexpected timestamp column type: %T", timestampCol))
-					return
-				}
-			}
-
-			// Content (required)
-			if contentCol.IsNull(i) {
-				entry.Content = ""
-			} else {
-				switch content := contentCol.(type) {
-				case *array.String:
-					entry.Content = content.Value(i)
-				case *array.Binary:
-					entry.Content = string(content.Value(i))
-				default:
-					yield(ParquetLogEntry{}, fmt.Errorf("unexpected content column type: %T", contentCol))
-					return
-				}
-			}
-
-			// Group (optional)
-			if groupCol != nil && !groupCol.IsNull(i) {
-				switch group := groupCol.(type) {
-				case *array.String:
-					entry.Group = group.Value(i)
-				case *array.Binary:
-					entry.Group = string(group.Value(i))
-				}
-			}
-
-			// Boolean fields (optional)
-			if hasTimeCol != nil && !hasTimeCol.IsNull(i) {
-				if boolCol, ok := hasTimeCol.(*array.Boolean); ok {
-					entry.HasTime = boolCol.Value(i)
-				}
-			}
-			if isCmdCol != nil && !isCmdCol.IsNull(i) {
-				if boolCol, ok := isCmdCol.(*array.Boolean); ok {
-					entry.IsCommand = boolCol.Value(i)
-				}
-			}
-			if isGroupCol != nil && !isGroupCol.IsNull(i) {
-				if boolCol, ok := isGroupCol.(*array.Boolean); ok {
-					entry.IsGroup = boolCol.Value(i)
-				}
-			}
-			if isProgCol != nil && !isProgCol.IsNull(i) {
-				if boolCol, ok := isProgCol.(*array.Boolean); ok {
-					entry.IsProgress = boolCol.Value(i)
-				}
-			}
-
-			// Raw size (optional)
-			if rawSizeCol != nil && !rawSizeCol.IsNull(i) {
-				switch size := rawSizeCol.(type) {
-				case *array.Int32:
-					entry.RawLineSize = size.Value(i)
-				}
-			}
-
-			if !yield(entry, nil) {
-				return
-			}
-		}
-	}
-}
-
-// convertTableToEntriesIter converts an Arrow table to an iterator over ParquetLogEntry
-func convertTableToEntriesIter(table arrow.Table) iter.Seq2[ParquetLogEntry, error] {
-	return func(yield func(ParquetLogEntry, error) bool) {
-		schema := table.Schema()
-
-		// Find column indices
-		var timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx = -1, -1, -1, -1, -1, -1, -1, -1
-
-		for i, field := range schema.Fields() {
-			switch field.Name {
-			case "timestamp":
-				timestampIdx = i
-			case "content":
-				contentIdx = i
-			case "group":
-				groupIdx = i
-			case "has_timestamp":
-				hasTimeIdx = i
-			case "is_command":
-				isCmdIdx = i
-			case "is_group":
-				isGroupIdx = i
-			case "is_progress":
-				isProgIdx = i
-			case "raw_line_size":
-				rawSizeIdx = i
-			}
-		}
-
-		if timestampIdx == -1 || contentIdx == -1 {
-			yield(ParquetLogEntry{}, fmt.Errorf("required columns 'timestamp' and 'content' not found"))
-			return
-		}
-
-		// Create a table reader to iterate through records
-		tr := array.NewTableReader(table, 1000) // 1000 rows per batch
-		defer tr.Release()
-
-		for tr.Next() {
-			record := tr.Record()
-			for entry, err := range convertRecordToEntriesIter(record, timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx) {
-				if !yield(entry, err) {
-					return
-				}
-			}
-		}
-
-		if err := tr.Err(); err != nil {
-			yield(ParquetLogEntry{}, fmt.Errorf("error reading table: %w", err))
-		}
-	}
-}
-
-// convertRecordToEntriesIter converts an Arrow record to an iterator over ParquetLogEntry
-func convertRecordToEntriesIter(record arrow.Record, timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx int) iter.Seq2[ParquetLogEntry, error] {
-	return func(yield func(ParquetLogEntry, error) bool) {
-		numRows := int(record.NumRows())
-
-		// Get column arrays
-		timestampCol := record.Column(timestampIdx)
-		contentCol := record.Column(contentIdx)
-
-		var groupCol, hasTimeCol, isCmdCol, isGroupCol, isProgCol, rawSizeCol arrow.Array
-		if groupIdx >= 0 {
-			groupCol = record.Column(groupIdx)
-		}
-		if hasTimeIdx >= 0 {
-			hasTimeCol = record.Column(hasTimeIdx)
-		}
-		if isCmdIdx >= 0 {
-			isCmdCol = record.Column(isCmdIdx)
-		}
-		if isGroupIdx >= 0 {
-			isGroupCol = record.Column(isGroupIdx)
-		}
-		if isProgIdx >= 0 {
-			isProgCol = record.Column(isProgIdx)
-		}
-		if rawSizeIdx >= 0 {
-			rawSizeCol = record.Column(rawSizeIdx)
 		}
 
 		// Convert each row

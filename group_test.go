@@ -19,13 +19,13 @@ func TestGroupTracking(t *testing.T) {
 	}
 
 	expectedGroups := []string{
-		"~~~ Running global environment hook",      // Section header itself
-		"~~~ Running global environment hook",      // Should inherit from previous section
-		"~~~ Running global environment hook",      // Should inherit from previous section
+		"~~~ Running global environment hook",        // Section header itself
+		"~~~ Running global environment hook",        // Should inherit from previous section
+		"~~~ Running global environment hook",        // Should inherit from previous section
 		"--- :package: Build job checkout directory", // New section header
 		"--- :package: Build job checkout directory", // Should inherit from new section
-		"+++ :hammer: Example tests",                  // Another new section header
-		"+++ :hammer: Example tests",                  // Should inherit from latest section
+		"+++ :hammer: Example tests",                 // Another new section header
+		"+++ :hammer: Example tests",                 // Should inherit from latest section
 	}
 
 	for i, line := range testData {
@@ -42,7 +42,7 @@ func TestGroupTracking(t *testing.T) {
 
 func TestGroupTrackingWithIterator(t *testing.T) {
 	parser := NewParser()
-	
+
 	testData := `~~~ Running global environment hook
 [90m$[0m /buildkite/agent/hooks/environment
 Some regular output
@@ -67,7 +67,7 @@ Test output line`
 	i := 0
 	for iterator.Next() {
 		entry := iterator.Entry()
-		
+
 		if i >= len(expectedGroups) {
 			t.Fatalf("More entries than expected")
 		}

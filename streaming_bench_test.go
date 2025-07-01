@@ -79,7 +79,7 @@ func BenchmarkRealWorldFiles(b *testing.B) {
 		b.Run(fmt.Sprintf("%s_Array", tf.name), func(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
-			
+
 			for i := 0; i < b.N; i++ {
 				entries, err := reader.ReadEntries()
 				if err != nil {
@@ -92,7 +92,7 @@ func BenchmarkRealWorldFiles(b *testing.B) {
 		b.Run(fmt.Sprintf("%s_Iterator", tf.name), func(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
-			
+
 			for i := 0; i < b.N; i++ {
 				count := 0
 				for entry, err := range reader.ReadEntriesIter() {
@@ -109,13 +109,13 @@ func BenchmarkRealWorldFiles(b *testing.B) {
 		b.Run(fmt.Sprintf("%s_EarlyTermination_Array", tf.name), func(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
-			
+
 			for i := 0; i < b.N; i++ {
 				entries, err := reader.ReadEntries()
 				if err != nil {
 					b.Fatalf("ReadEntries failed: %v", err)
 				}
-				
+
 				// Process only first 1000 entries
 				for j, entry := range entries {
 					if j >= 1000 {
@@ -129,14 +129,14 @@ func BenchmarkRealWorldFiles(b *testing.B) {
 		b.Run(fmt.Sprintf("%s_EarlyTermination_Iterator", tf.name), func(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
-			
+
 			for i := 0; i < b.N; i++ {
 				count := 0
 				for entry, err := range reader.ReadEntriesIter() {
 					if err != nil {
 						b.Fatalf("ReadEntriesIter failed: %v", err)
 					}
-					
+
 					_ = entry.Content
 					count++
 					if count >= 1000 {
