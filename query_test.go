@@ -26,17 +26,17 @@ func TestParquetReader(t *testing.T) {
 		reader := NewParquetReader(testFile)
 		entryCount := 0
 		var firstEntry ParquetLogEntry
-		
+
 		for entry, err := range reader.ReadEntriesIter() {
 			if err != nil {
 				t.Fatalf("ReadEntriesIter failed: %v", err)
 			}
-			
+
 			if entryCount == 0 {
 				firstEntry = entry
 			}
 			entryCount++
-			
+
 			// Stop after reading a few entries to verify streaming works
 			if entryCount >= 10 {
 				break
@@ -59,19 +59,19 @@ func TestParquetReader(t *testing.T) {
 	t.Run("FilterByGroupIter", func(t *testing.T) {
 		reader := NewParquetReader(testFile)
 		entryCount := 0
-		
+
 		for entry, err := range reader.FilterByGroupIter("environment") {
 			if err != nil {
 				t.Fatalf("FilterByGroupIter failed: %v", err)
 			}
-			
+
 			entryCount++
-			
+
 			// Verify all returned entries match the filter
 			if entry.Group != "" && !containsIgnoreCase(entry.Group, "environment") {
 				t.Errorf("Entry group '%s' does not contain 'environment'", entry.Group)
 			}
-			
+
 			// Stop after reading a few entries
 			if entryCount >= 5 {
 				break
@@ -86,14 +86,14 @@ func TestParquetReader(t *testing.T) {
 		reader := NewParquetReader(testFile)
 		groupMap := make(map[string]*GroupInfo)
 		totalEntries := 0
-		
+
 		for entry, err := range reader.ReadEntriesIter() {
 			if err != nil {
 				t.Fatalf("ReadEntriesIter failed: %v", err)
 			}
-			
+
 			totalEntries++
-			
+
 			groupName := entry.Group
 			if groupName == "" {
 				groupName = "<no group>"
@@ -117,7 +117,7 @@ func TestParquetReader(t *testing.T) {
 			if entry.IsProgress {
 				info.Progress++
 			}
-			
+
 			// Stop after processing some entries for test performance
 			if totalEntries >= 100 {
 				break
@@ -127,7 +127,7 @@ func TestParquetReader(t *testing.T) {
 		if len(groupMap) == 0 {
 			t.Fatal("No groups found")
 		}
-		
+
 		// Verify group structure
 		for _, group := range groupMap {
 			if group.Name == "" {
@@ -149,12 +149,12 @@ func TestParquetReader(t *testing.T) {
 		reader := NewParquetReader(testFile)
 		targetCount := 5
 		actualCount := 0
-		
+
 		for _, err := range reader.ReadEntriesIter() {
 			if err != nil {
 				t.Fatalf("ReadEntriesIter failed: %v", err)
 			}
-			
+
 			actualCount++
 			if actualCount >= targetCount {
 				break // Test early termination
@@ -193,7 +193,7 @@ func TestStreamingGroupAnalysis(t *testing.T) {
 
 	// Simulate streaming group analysis
 	groupMap := make(map[string]*GroupInfo)
-	
+
 	for _, entry := range testEntries {
 		groupName := entry.Group
 		if groupName == "" {
@@ -299,17 +299,17 @@ func TestReadParquetFileIter(t *testing.T) {
 
 	entryCount := 0
 	var firstEntry ParquetLogEntry
-	
+
 	for entry, err := range ReadParquetFileIter(testFile) {
 		if err != nil {
 			t.Fatalf("ReadParquetFileIter failed: %v", err)
 		}
-		
+
 		if entryCount == 0 {
 			firstEntry = entry
 		}
 		entryCount++
-		
+
 		// Stop after reading some entries for test performance
 		if entryCount >= 50 {
 			break
@@ -338,7 +338,7 @@ func TestReadParquetFileIterNotFound(t *testing.T) {
 		}
 		entryCount++
 	}
-	
+
 	if entryCount > 0 {
 		t.Error("Expected error for non-existent file, but got entries")
 	}
@@ -351,7 +351,7 @@ func TestStreamingPerformance(t *testing.T) {
 	}
 
 	reader := NewParquetReader(testFile)
-	
+
 	// Test that we can process entries without loading everything into memory
 	t.Run("MemoryEfficient", func(t *testing.T) {
 		entryCount := 0
@@ -360,21 +360,21 @@ func TestStreamingPerformance(t *testing.T) {
 				t.Fatalf("ReadEntriesIter failed: %v", err)
 			}
 			entryCount++
-			
+
 			// Process many entries to test memory efficiency
 			if entryCount >= 1000 {
 				break
 			}
 		}
-		
+
 		t.Logf("Successfully processed %d entries with streaming", entryCount)
 	})
-	
+
 	// Test early termination performance
 	t.Run("EarlyTermination", func(t *testing.T) {
 		targetCount := 10
 		actualCount := 0
-		
+
 		for _, err := range reader.ReadEntriesIter() {
 			if err != nil {
 				t.Fatalf("ReadEntriesIter failed: %v", err)
@@ -384,7 +384,7 @@ func TestStreamingPerformance(t *testing.T) {
 				break
 			}
 		}
-		
+
 		if actualCount != targetCount {
 			t.Errorf("Expected exactly %d entries, got %d", targetCount, actualCount)
 		}

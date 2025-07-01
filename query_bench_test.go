@@ -94,7 +94,7 @@ func BenchmarkStreamingGroupAnalysis(b *testing.B) {
 
 	for b.Loop() {
 		groupMap := make(map[string]*GroupInfo)
-		
+
 		for entry, err := range reader.ReadEntriesIter() {
 			if err != nil {
 				b.Fatalf("ReadEntriesIter failed: %v", err)
@@ -359,4 +359,3 @@ func BenchmarkStreamingScalability(b *testing.B) {
 		}
 	})
 }
-

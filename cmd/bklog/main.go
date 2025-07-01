@@ -151,11 +151,13 @@ func handleQueryCommand() {
 
 	queryFlags := flag.NewFlagSet("query", flag.ExitOnError)
 	queryFlags.StringVar(&config.ParquetFile, "file", "", "Path to Parquet log file (required)")
-	queryFlags.StringVar(&config.Operation, "op", "list-groups", "Query operation: list-groups, by-group")
+	queryFlags.StringVar(&config.Operation, "op", "list-groups", "Query operation: list-groups, by-group, info, tail, seek")
 	queryFlags.StringVar(&config.GroupName, "group", "", "Group name to filter by (for by-group operation)")
 	queryFlags.StringVar(&config.Format, "format", "text", "Output format: text, json")
 	queryFlags.BoolVar(&config.ShowStats, "stats", true, "Show query statistics")
 	queryFlags.IntVar(&config.LimitEntries, "limit", 0, "Limit number of entries returned (0 = no limit, enables early termination)")
+	queryFlags.IntVar(&config.TailLines, "tail", 10, "Number of lines to show from end (for tail operation)")
+	queryFlags.Int64Var(&config.SeekToRow, "seek", 0, "Row number to seek to (0-based, for seek operation)")
 
 	queryFlags.Usage = func() {
 		fmt.Printf("Usage: %s query -file <parquet-file> [options]\n\n", os.Args[0])
@@ -165,11 +167,16 @@ func handleQueryCommand() {
 		fmt.Println("\nOperations:")
 		fmt.Println("  list-groups  List all groups with statistics")
 		fmt.Println("  by-group     Show entries for a specific group")
+		fmt.Println("  info         Show file metadata (row count, file size, etc.)")
+		fmt.Println("  tail         Show last N entries from the file")
+		fmt.Println("  seek         Start reading from a specific row number")
 		fmt.Println("\nExamples:")
 		fmt.Printf("  %s query -file logs.parquet -op list-groups\n", os.Args[0])
 		fmt.Printf("  %s query -file logs.parquet -op by-group -group \"Running tests\"\n", os.Args[0])
+		fmt.Printf("  %s query -file logs.parquet -op info\n", os.Args[0])
+		fmt.Printf("  %s query -file logs.parquet -op tail -tail 20\n", os.Args[0])
+		fmt.Printf("  %s query -file logs.parquet -op seek -seek 1000 -limit 50\n", os.Args[0])
 		fmt.Printf("  %s query -file logs.parquet -op list-groups -format json\n", os.Args[0])
-		fmt.Printf("  %s query -file logs.parquet -op by-group -group \"test\" -limit 100\n", os.Args[0])
 	}
 
 	if err := queryFlags.Parse(os.Args[2:]); err != nil {
@@ -392,9 +399,6 @@ func shouldIncludeEntry(entry *buildkitelogs.LogEntry, filter string) bool {
 		return true
 	}
 }
-
-
-
 
 func exportToParquetSeq2(reader io.Reader, parser *buildkitelogs.Parser, filename string, filter string, summary *ProcessingSummary) error {
 	// Create filter function based on filter string
