@@ -489,7 +489,6 @@ The exported Parquet files contain the following columns:
 | `is_command` | bool | Whether entry is a shell command |
 | `is_group` | bool | Whether entry is a group header |
 | `is_progress` | bool | Whether entry is a progress update |
-| `raw_line_size` | int32 | Size of original raw line in bytes |
 
 ### Usage Examples
 
@@ -618,7 +617,6 @@ type ParquetLogEntry struct {
     IsCommand   bool   `json:"is_command"`     // Whether entry is a command
     IsGroup     bool   `json:"is_group"`       // Whether entry is a group header
     IsProgress  bool   `json:"is_progress"`    // Whether entry is progress update
-    RawLineSize int32  `json:"raw_line_size"`  // Original line size in bytes
 }
 
 type GroupInfo struct {

@@ -23,7 +23,6 @@ func createArrowSchema() *arrow.Schema {
 		{Name: "is_command", Type: arrow.FixedWidthTypes.Boolean, Nullable: false},
 		{Name: "is_group", Type: arrow.FixedWidthTypes.Boolean, Nullable: false},
 		{Name: "is_progress", Type: arrow.FixedWidthTypes.Boolean, Nullable: false},
-		{Name: "raw_line_size", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
 	}, nil)
 }
 
@@ -39,7 +38,6 @@ func createRecordFromEntries(entries []*LogEntry, pool memory.Allocator) (arrow.
 	isCommandBuilder := array.NewBooleanBuilder(pool)
 	isGroupBuilder := array.NewBooleanBuilder(pool)
 	isProgressBuilder := array.NewBooleanBuilder(pool)
-	rawLineSizeBuilder := array.NewInt32Builder(pool)
 
 	defer timestampBuilder.Release()
 	defer contentBuilder.Release()
@@ -48,7 +46,6 @@ func createRecordFromEntries(entries []*LogEntry, pool memory.Allocator) (arrow.
 	defer isCommandBuilder.Release()
 	defer isGroupBuilder.Release()
 	defer isProgressBuilder.Release()
-	defer rawLineSizeBuilder.Release()
 
 	// Reserve capacity
 	numEntries := len(entries)
@@ -59,7 +56,6 @@ func createRecordFromEntries(entries []*LogEntry, pool memory.Allocator) (arrow.
 	isCommandBuilder.Resize(numEntries)
 	isGroupBuilder.Resize(numEntries)
 	isProgressBuilder.Resize(numEntries)
-	rawLineSizeBuilder.Resize(numEntries)
 
 	// Populate arrays
 	for _, entry := range entries {
@@ -70,7 +66,6 @@ func createRecordFromEntries(entries []*LogEntry, pool memory.Allocator) (arrow.
 		isCommandBuilder.Append(entry.IsCommand())
 		isGroupBuilder.Append(entry.IsGroup())
 		isProgressBuilder.Append(entry.IsProgress())
-		rawLineSizeBuilder.Append(int32(len(entry.RawLine)))
 	}
 
 	// Build arrays
@@ -81,7 +76,6 @@ func createRecordFromEntries(entries []*LogEntry, pool memory.Allocator) (arrow.
 	isCommandArray := isCommandBuilder.NewArray()
 	isGroupArray := isGroupBuilder.NewArray()
 	isProgressArray := isProgressBuilder.NewArray()
-	rawLineSizeArray := rawLineSizeBuilder.NewArray()
 
 	defer timestampArray.Release()
 	defer contentArray.Release()
@@ -90,7 +84,6 @@ func createRecordFromEntries(entries []*LogEntry, pool memory.Allocator) (arrow.
 	defer isCommandArray.Release()
 	defer isGroupArray.Release()
 	defer isProgressArray.Release()
-	defer rawLineSizeArray.Release()
 
 	// Create record
 	return array.NewRecord(schema, []arrow.Array{
@@ -101,7 +94,6 @@ func createRecordFromEntries(entries []*LogEntry, pool memory.Allocator) (arrow.
 		isCommandArray,
 		isGroupArray,
 		isProgressArray,
-		rawLineSizeArray,
 	}, int64(numEntries)), nil
 }
 
