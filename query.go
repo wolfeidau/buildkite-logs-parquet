@@ -18,14 +18,13 @@ import (
 
 // ParquetLogEntry represents a log entry read from a Parquet file
 type ParquetLogEntry struct {
-	Timestamp   int64  `json:"timestamp"`
-	Content     string `json:"content"`
-	Group       string `json:"group"`
-	HasTime     bool   `json:"has_timestamp"`
-	IsCommand   bool   `json:"is_command"`
-	IsGroup     bool   `json:"is_group"`
-	IsProgress  bool   `json:"is_progress"`
-	RawLineSize int32  `json:"raw_line_size"`
+	Timestamp  int64  `json:"timestamp"`
+	Content    string `json:"content"`
+	Group      string `json:"group"`
+	HasTime    bool   `json:"has_timestamp"`
+	IsCommand  bool   `json:"is_command"`
+	IsGroup    bool   `json:"is_group"`
+	IsProgress bool   `json:"is_progress"`
 }
 
 // GroupInfo contains statistical information about a log group
@@ -197,14 +196,14 @@ func readParquetFileStreamingIter(filename string, batchSize int64) iter.Seq2[Pa
 
 // columnMapping holds column indices for efficient access
 type columnMapping struct {
-	timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx, rawSizeIdx int
+	timestampIdx, contentIdx, groupIdx, hasTimeIdx, isCmdIdx, isGroupIdx, isProgIdx int
 }
 
 // mapColumns maps column names to indices from schema
 func mapColumns(schema *arrow.Schema) (*columnMapping, error) {
 	mapping := &columnMapping{
 		timestampIdx: -1, contentIdx: -1, groupIdx: -1, hasTimeIdx: -1,
-		isCmdIdx: -1, isGroupIdx: -1, isProgIdx: -1, rawSizeIdx: -1,
+		isCmdIdx: -1, isGroupIdx: -1, isProgIdx: -1,
 	}
 
 	for i, field := range schema.Fields() {
@@ -223,8 +222,6 @@ func mapColumns(schema *arrow.Schema) (*columnMapping, error) {
 			mapping.isGroupIdx = i
 		case "is_progress":
 			mapping.isProgIdx = i
-		case "raw_line_size":
-			mapping.rawSizeIdx = i
 		}
 	}
 
@@ -244,7 +241,7 @@ func convertRecordToEntriesIterStreaming(record arrow.Record, mapping *columnMap
 		timestampCol := record.Column(mapping.timestampIdx)
 		contentCol := record.Column(mapping.contentIdx)
 
-		var groupCol, hasTimeCol, isCmdCol, isGroupCol, isProgCol, rawSizeCol arrow.Array
+		var groupCol, hasTimeCol, isCmdCol, isGroupCol, isProgCol arrow.Array
 		if mapping.groupIdx >= 0 {
 			groupCol = record.Column(mapping.groupIdx)
 		}
@@ -259,9 +256,6 @@ func convertRecordToEntriesIterStreaming(record arrow.Record, mapping *columnMap
 		}
 		if mapping.isProgIdx >= 0 {
 			isProgCol = record.Column(mapping.isProgIdx)
-		}
-		if mapping.rawSizeIdx >= 0 {
-			rawSizeCol = record.Column(mapping.rawSizeIdx)
 		}
 
 		// Convert each row
@@ -325,14 +319,6 @@ func convertRecordToEntriesIterStreaming(record arrow.Record, mapping *columnMap
 			if isProgCol != nil && !isProgCol.IsNull(i) {
 				if boolCol, ok := isProgCol.(*array.Boolean); ok {
 					entry.IsProgress = boolCol.Value(i)
-				}
-			}
-
-			// Raw size (optional)
-			if rawSizeCol != nil && !rawSizeCol.IsNull(i) {
-				switch size := rawSizeCol.(type) {
-				case *array.Int32:
-					entry.RawLineSize = size.Value(i)
 				}
 			}
 

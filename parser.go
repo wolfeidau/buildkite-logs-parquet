@@ -11,8 +11,8 @@ import (
 // LogEntry represents a parsed Buildkite log entry
 type LogEntry struct {
 	Timestamp time.Time
-	Content   string
-	RawLine   []byte
+	Content   string // Parsed content after OSC processing, may still contain ANSI codes
+	RawLine   []byte // Original line bytes including all OSC sequences and formatting
 	Group     string // The current section/group this entry belongs to
 }
 
