@@ -200,13 +200,18 @@ func TestParseReader(t *testing.T) {
 		"\x1b_bk;t=1745322209948\x07~~~ Running global pre-checkout hook"
 
 	reader := strings.NewReader(input)
-	entries, err := parser.ParseReader(reader)
-	if err != nil {
-		t.Fatalf("ParseReader() error = %v", err)
+
+	// Collect entries using streaming iterator
+	var entries []*LogEntry
+	for entry, err := range parser.All(reader) {
+		if err != nil {
+			t.Fatalf("Parser.All() error = %v", err)
+		}
+		entries = append(entries, entry)
 	}
 
 	if len(entries) != 4 {
-		t.Fatalf("ParseReader() got %d entries, want 4", len(entries))
+		t.Fatalf("Parser.All() got %d entries, want 4", len(entries))
 	}
 
 	// Check first entry

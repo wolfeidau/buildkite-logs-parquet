@@ -55,28 +55,6 @@ func (p *Parser) ParseLine(line string) (*LogEntry, error) {
 	return entry, nil
 }
 
-// ParseReader parses log entries from an io.Reader
-// Deprecated: Use NewIterator for memory-efficient processing of large files
-func (p *Parser) ParseReader(reader io.Reader) ([]*LogEntry, error) {
-	var entries []*LogEntry
-	scanner := bufio.NewScanner(reader)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		entry, err := p.ParseLine(line)
-		if err != nil {
-			return nil, err
-		}
-		entries = append(entries, entry)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return entries, nil
-}
-
 // NewIterator creates a new LogIterator for memory-efficient processing
 func (p *Parser) NewIterator(reader io.Reader) *LogIterator {
 	return &LogIterator{
